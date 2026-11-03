@@ -2,178 +2,71 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#0d1726">
-<meta name="description" content="MotoRadar: mapa, GPS, radar de precipitação e rota para viagens de moto.">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f8fbff">
+<meta name="description" content="MotoRadar: planeje rotas com várias paradas e visualize o radar meteorológico sobre a estrada.">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>MotoRadar • Radar e rota</title>
+<title>MotoRadar • Rotas e radar</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous">
-<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
-<style>
-:root { --bg:#101b2c; --fg:#f6f9ff; --muted:#abc0d8; --accent:#69d8c4; --border:#445a73; --glass:rgba(11,25,43,.94);--sh:0 10px 36px rgba(7,13,25,.32);font-family:Inter,system-ui,-apple-system,Roboto,Arial,sans-serif;color-scheme:dark; }
-* {box-sizing:border-box}
-html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);font-family:inherit;color:var(--fg)}
-button,input{font:inherit}button{cursor:pointer;touch-action:manipulation}button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-#map{position:absolute;inset:0;z-index:1;background:#dfe8e0}
-.leaflet-control-attribution{font:9px system-ui,sans-serif!important;background:rgba(255,255,255,.85)!important;color:#263c4d!important}.leaflet-bottom.leaflet-right{bottom:calc(262px + env(safe-area-inset-bottom))}.leaflet-control-zoom{display:none}
-.header{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;z-index:900;max-width:580px;margin:auto;display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:20px;background:var(--glass);backdrop-filter:blur(20px);box-shadow:var(--sh)}
-.logo{width:40px;height:40px;border-radius:12px;background:#163748;display:grid;place-items:center;flex-shrink:0}
-.logo svg{width:28px;height:28px}
-.brand{flex:1;min-width:0}.brand b{font-size:16px;letter-spacing:.3px}.sub{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.status{max-width:98px;text-align:right;font-size:10px;font-weight:700;line-height:1.4;color:var(--accent)}
-.side{position:absolute;right:12px;top:calc(91px + env(safe-area-inset-top));z-index:900;display:flex;flex-direction:column;gap:9px}
-.round{width:47px;height:47px;border-radius:16px;background:var(--glass);color:var(--fg);border:1px solid var(--border);box-shadow:var(--sh);display:grid;place-items:center;font-size:21px}
-.round.active{color:#112430;background:#80e1d0;border-color:#80e1d0}
-.round:disabled{opacity:.46}
-.panel{max-height:calc(100dvh - 120px);overflow-y:auto;overscroll-behavior:contain;position:absolute;z-index:900;bottom:calc(10px + env(safe-area-inset-bottom));left:10px;right:10px;max-width:600px;margin:auto;border-radius:22px;background:var(--glass);border:1px solid var(--border);padding:13px;box-shadow:var(--sh);backdrop-filter:blur(20px)}
-#panelBar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 0 8px}
-#mapNotice{font-size:12px;color:#e4f6ee;line-height:1.35;flex:1;min-width:0}
-#panelToggle{flex-shrink:0;border:1px solid #47617c;background:#25445c;color:white;border-radius:12px;padding:9px;font-size:12px}
-.panel.collapsed{overflow:hidden;padding:10px 12px}
-.panel.collapsed #panelBody{display:none}
-.panel.collapsed #panelBar{padding:0}
-#searchForm{display:flex;gap:7px;margin-top:10px}
-#destSearch{min-width:0;flex:1;color:#fff;background:#12283e;border:1px solid #587691;border-radius:12px;padding:11px;font-size:14px}
-#destSearch::placeholder{color:#b8c9db}
-#searchResults{display:flex;flex-direction:column;gap:5px;margin-top:6px;max-height:155px;overflow-y:auto}
-.search-item{text-align:left;border:1px solid #47617c;background:#173247;color:#f2f8fc;padding:8px 9px;border-radius:9px;font-size:12px}
-#pickDestinationBtn{margin-top:8px;width:100%}
-.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.row+.row{margin-top:8px}.title{font-weight:760;font-size:13px}.hint{font-size:11px;color:var(--muted)}.meta{font-size:12px;color:#cfe6f8;font-variant-numeric:tabular-nums}
-.tone{color:var(--accent)}.warn{color:#f6cc78}.btn{background:#1d344d;color:var(--fg);border:1px solid #47617c;border-radius:12px;padding:10px 12px;font-weight:650;font-size:12px;min-height:41px}.btn:hover{background:#274460}.btn.primary{background:#2c887d;color:white;border-color:#3eb1a1}.btn:disabled{opacity:.4;cursor:default}
-.track{display:flex;gap:8px;align-items:center;margin-top:10px}.track input{width:100%;accent-color:var(--accent);height:24px;min-width:20px}.time{width:51px;flex-shrink:0;font-size:12px;font-weight:720;text-align:right}.group{display:flex;gap:7px}.group>*{flex:1}
-.switch{background:#142638;color:#c9d8eb;border:1px solid #47617c;padding:9px 7px;border-radius:11px;font-size:12px;font-weight:650;flex:1}.switch[aria-pressed=true]{background:#64bfaa;color:#0b2526;border-color:#64bfaa}
-.radar-row{margin-top:6px}.slide{width:100%;accent-color:var(--accent)}
-.divider{margin:10px 0;border:0;border-top:1px solid #344e68}
-.alert{font-size:11px;min-height:16px;line-height:1.3;color:#bcd4e9}
-.alert.error{color:#ffb4af}.alert.success{color:#9af1cb}
-.pill{font-size:10px;border:1px solid #47617c;padding:4px 8px;border-radius:100px;color:#d4e6f9;white-space:nowrap}
-#routeInfo{font-size:11px;color:#cde4eb;margin-top:8px;min-height:17px}
-.footer{margin-top:9px;display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap;font-size:10px;color:#bacbdc}
-.footer a{color:#92eadc;text-decoration:none}
-.marker-user{height:24px;width:24px;background:#2479f7;border:4px solid white;border-radius:50%;box-shadow:0 0 0 5px rgba(39,111,247,.19), 0 2px 14px rgba(0,0,0,.55)}
-.marker-dest{display:flex;align-items:center;justify-content:center;width:33px;height:33px;border-radius:12px;background:#fbf8f3;border:3px solid #2e4258;box-shadow:0 2px 15px #18283a55;color:#16243c;font-size:20px}
-#toast{position:absolute;z-index:1100;left:16px;right:16px;top:calc(100px + env(safe-area-inset-top));margin:auto;max-width:440px;display:none;text-align:center;padding:12px;border:1px solid #6b91a4;border-radius:16px;background:#102a3e;color:white;box-shadow:var(--sh);font-size:13px}
-#toast.visible{display:block}
-@media (min-width:700px){.header{top:18px;left:20px;right:auto;width:435px}.panel{left:20px;right:auto;max-width:410px;width:410px;bottom:20px}.side{right:20px;top:100px}.leaflet-bottom.leaflet-right{bottom:8px}}
-@media (max-height:670px){.panel{padding:9px;border-radius:17px}.panel .hint{display:none}.footer{margin-top:4px}.divider{margin:6px 0}.track{margin-top:4px}.btn{padding:7px 6px;min-height:35px}.leaflet-bottom.leaflet-right{bottom:236px}}
-</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="app.css?v=3">
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script defer src="app.js?v=3"></script>
 </head>
 <body>
-<div id="map" aria-label="Mapa interativo com radar meteorológico"></div>
-<header class="header">
- <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 18a9 9 0 1 1 17 3" stroke="#8ce9db" stroke-width="3" stroke-linecap="round"/><path d="M6 24h20M11 28h10" stroke="#f4fbff" stroke-width="2.5" stroke-linecap="round"/><path d="m19 10-6 8h5l-3 7" stroke="#ffdb82" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
- <div class="brand"><b>MotoRadar</b><div class="sub" id="subtitle">Mapa, radar e rota • Protótipo v0.2</div></div>
- <div class="status" id="radarState">CARREGANDO<br>RADAR</div>
+<div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
+<header class="topbar">
+ <div class="app-name"><span class="logo-mark">⛅</span><span><strong>MotoRadar</strong><small>Rota e chuva no mesmo mapa</small></span></div>
+ <button id="settingsBtn" class="round-btn" type="button" title="Configurações de radar" aria-label="Configurações do radar">⚙</button>
 </header>
-<div class="side">
- <button class="round" id="gpsBtn" title="Localização GPS" aria-label="Ativar GPS">⌖</button>
- <button class="round" id="followBtn" title="Seguir minha posição" aria-label="Seguir GPS" disabled>➤</button>
- <button class="round" id="destBtn" title="Escolher destino no mapa" aria-label="Escolher destino">⚑</button>
- <button class="round" id="refreshBtn" title="Atualizar radar" aria-label="Atualizar radar">↻</button>
+<main>
+ <section id="routePanel" class="route-card" aria-label="Planejar viagem">
+  <button id="routeToggle" class="route-heading" type="button" aria-expanded="true"><span class="route-title">↗ &nbsp;Planejar rota</span><span class="route-toggle-label">Recolher ⌃</span></button>
+  <div id="routeForm" class="route-content">
+   <div class="route-field" data-target="origin">
+    <div class="field-dot start-dot"></div>
+    <div class="field-main"><label for="originInput">Saída</label><div class="entry"><input id="originInput" type="search" placeholder="Endereço ou cidade de partida" autocomplete="off" maxlength="160"><button class="place-search" type="button" data-search="origin" aria-label="Buscar saída">⌕</button></div></div>
+    <button id="gpsUseBtn" class="tiny-btn" type="button" aria-label="Usar localização atual na saída" title="Usar localização atual">◎ GPS</button><button class="tiny-btn map-pick" type="button" data-pick="origin" aria-label="Marcar saída no mapa">⌖</button>
+   </div>
+   <div id="stopsList" aria-label="Paradas intermediárias"></div>
+   <div class="route-field" data-target="destination">
+    <div class="field-dot end-dot"></div>
+    <div class="field-main"><label for="destinationInput">Destino</label><div class="entry"><input id="destinationInput" type="search" placeholder="Onde deseja chegar?" autocomplete="off" maxlength="160"><button class="place-search" type="button" data-search="destination" aria-label="Buscar destino">⌕</button></div></div>
+    <button class="tiny-btn map-pick" type="button" data-pick="destination" title="Marcar destino no mapa" aria-label="Marcar destino no mapa">⌖</button>
+   </div>
+   <div id="placeResults" class="place-results" role="region" aria-live="polite" aria-label="Locais encontrados" hidden></div>
+   <div class="route-tools"><button id="addStopBtn" class="text-btn" type="button">＋ Adicionar parada</button><button id="clearBtn" class="text-btn neutral" type="button">Limpar rota</button></div>
+   <button id="drawRouteBtn" class="draw-btn" type="button">Mostrar rota no mapa</button>
+   <div class="tiny-credit">Busca: © OpenStreetMap / Nominatim • Rodovias: OSRM (automóvel)</div>
+  </div>
+ </section>
+ <div id="pickTip" class="pick-tip" hidden>Toque no mapa para marcar este ponto <button id="cancelPickBtn" type="button">Cancelar</button></div>
+ <div class="float-actions"><button id="gpsFloatingBtn" type="button" title="Minha localização" aria-label="Mostrar minha localização">◎</button></div>
+ <div class="bottom-stack">
+  <div id="radarBadge" class="radar-badge"><span id="radarDot" class="radar-dot"></span><span id="radarAge">Carregando radar...</span><button id="radarQuickBtn" type="button" aria-label="Abrir controles do radar">☷</button></div>
+  <section id="routeSummary" class="route-summary" aria-live="polite" hidden>
+   <div class="route-summary-top"><div><strong id="routeInfo">Rota planejada</strong><small id="routeDetail">Perfil de automóvel</small></div><button id="editRouteBtn" type="button">Editar</button></div>
+   <div class="nav-actions"><button id="mapsBtn" class="maps-btn" type="button">Abrir Google Maps</button><button id="wazeBtn" class="waze-btn" type="button">Abrir Waze</button></div>
+  </section>
+ </div>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="settingsPanel" class="modal-cover" hidden>
+ <section class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="sheet-head"><div><h2 id="settingsTitle">Radar meteorológico</h2><small>Mosaico histórico • Sem previsão futura</small></div><button id="settingsClose" class="round-btn" type="button" aria-label="Fechar configurações">✕</button></div>
+  <div class="setting-row"><span>Radar sobre o mapa</span><button id="radarVisibleBtn" class="chip on" type="button" aria-pressed="true">Ligado</button></div>
+  <label class="slider-label" for="radarOpacity">Opacidade <span id="opacityTxt">68%</span></label><input id="radarOpacity" type="range" min="0" max="100" value="68">
+  <label class="slider-label" for="radarTimeline">Histórico <span id="radarFrameTime">--:--</span></label>
+  <div class="timeline-row"><button id="radarPrevBtn" class="tiny-btn" type="button" aria-label="Quadro anterior">◀</button><button id="radarPlayBtn" class="tiny-btn" type="button" aria-label="Reproduzir radar">▶</button><input id="radarTimeline" type="range" min="0" max="0" value="0" disabled><button id="radarNextBtn" class="tiny-btn" type="button" aria-label="Próximo quadro">▶</button></div>
+  <div class="setting-row"><span>Máscara de cobertura</span><button id="radarCoverageBtn" class="chip" type="button" aria-pressed="false">Desligada</button></div>
+  <button id="radarRefreshBtn" class="secondary-action" type="button">↻ Atualizar radar</button>
+  <p class="warning">O horário do mosaico não é necessariamente o de cada varredura. Sem eco não significa cobertura, e eco não garante chuva na estrada.</p>
+  <p class="attribution">Radar: <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>. Não opere os controles pilotando.</p>
+ </section>
 </div>
-<div id="toast" role="status" aria-live="polite"></div>
-<section class="panel" id="controlPanel" aria-label="Controle de radar e navegação">
- <div id="panelBar"><span id="mapNotice">Escolha seu destino para desenhar a rota</span><button id="panelToggle" aria-expanded="true">Recolher ▾</button></div>
- <div id="panelBody">
- <div class="row">
-  <div><div class="title">Radar meteorológico <span class="pill" id="frameCount">—</span></div><div class="hint">Mosaico histórico • Sem nowcasting</div></div>
-  <span class="meta" id="frameTime">--:--</span>
- </div>
- <div class="track">
-  <button class="btn" id="prevBtn" aria-label="Quadro anterior">◀</button>
-  <button class="btn primary" id="playBtn" aria-label="Reproduzir histórico">▶</button>
-  <input type="range" id="timeline" min="0" max="0" value="0" aria-label="Linha do tempo do radar" disabled>
-  <button class="btn" id="nextBtn" aria-label="Próximo quadro">▶</button>
- </div>
- <div class="row radar-row"><span class="hint">Transparência / opacidade</span><span class="hint" id="opacityTxt">68%</span></div>
- <input class="slide" type="range" id="opacity" min="0" max="100" value="68" aria-label="Opacidade do radar">
- <div class="row"><button class="switch" id="layerBtn" aria-pressed="true">Radar visível</button><button class="switch" id="coverageBtn" aria-pressed="false">Máscara cobertura</button></div>
- <hr class="divider">
- <div class="row"><div><div class="title">Rota da viagem</div><div class="hint">Toque em ⚑ e marque o destino</div></div><span class="pill" id="gpsStatus">GPS desligado</span></div>
- <form id="searchForm" autocomplete="off"><input id="destSearch" type="search" placeholder="Cidade, endereço ou destino" aria-label="Pesquisar destino" maxlength="160" required><button class="btn primary" type="submit" id="searchBtn">Buscar</button></form>
- <div class="hint" style="margin-top:4px">Busca manual por nome • OpenStreetMap (Nominatim)</div>
- <div id="searchResults" role="region" aria-live="polite" aria-label="Resultados de destinos"></div>
- <button class="btn" type="button" id="pickDestinationBtn">⚑ Ou marcar destino tocando no mapa</button>
- <div id="routeInfo">Sem destino selecionado.</div>
- <div class="row group" style="margin-top:8px"><button class="btn" id="wazeBtn" disabled>Abrir Waze ↗</button><button class="btn" id="mapsBtn" disabled>Google Maps ↗</button><button class="btn" id="clearBtn" disabled title="Limpar destino">Limpar</button></div>
- <div class="footer"><span id="message" class="alert" aria-live="polite">Preparando radar…</span><a href="https://www.rainviewer.com/" target="_blank" rel="noopener">Radar: RainViewer</a></div>
- <div class="footer" style="margin-top:3px"><span>Não use os controles enquanto pilota.</span><span id="freshness">Horário do mosaico ≠ horário de cada varredura</span></div>
- </div>
-</section>
-<script>
-'use strict';
-(() => {
- const $ = id => document.getElementById(id);
- const API = 'https://api.rainviewer.com/public/weather-maps.json';
- const MAX_FRAMES = 6; // ~50 min de evolução; evita excesso de requisições da API gratuita
- const RADAR_COLOR = 2; // Universal Blue: paleta gratuita disponível em 2026
- let map, radarHost = '', frames=[], layer=null, coverageLayer=null, frameIdx=0, playing=false, playTimer=null, refreshTimer=null, requestedFrame=-1;
- let opacity=.68, radarVisible=true, coverageVisible=false;
- let userLatLng=null, userMarker=null, accuracyCircle=null, gpsWatch=null, follow=false, selectDest=false, destLatLng=null, destMarker=null, routeLayer=null, lastRouteOrigin=null, userIcon=null, destIcon=null;
- let toastTimer, panelCollapsed=false, routeNeedsFit=false, destLabel='', lastSearchAt=0;
- // Leaflet é carregado com defer; instanciar ícones apenas após a biblioteca estar disponível.
- function createIcons(){ userIcon=L.divIcon({className:'',html:'<div class="marker-user"></div>',iconSize:[24,24],iconAnchor:[12,12]});
- destIcon=L.divIcon({className:'',html:'<div class="marker-dest">⚑</div>',iconSize:[33,33],iconAnchor:[16,32]}); }
- function msg(s,type=''){ $('message').textContent=s; $('message').className='alert '+type; }
- function toast(s){$('toast').textContent=s;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),4400);}
- function fmtFrame(t){return new Date(t*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
- function ageMin(t){return Math.max(0,Math.round((Date.now()/1000-t)/60));}
- function updateStatus(){ if (!frames.length) return;const f=frames[frameIdx];$('frameTime').textContent=fmtFrame(f.time);const age=ageMin(f.time);$('radarState').innerHTML=age+' MIN<br>ATRÁS';$('radarState').style.color=age>30?'#f6cc78':'#69d8c4';$('frameCount').textContent=(frameIdx+1)+' / '+frames.length;$('timeline').value=String(frameIdx);$('subtitle').textContent='Quadro '+fmtFrame(f.time)+' • '+age+' min de idade aprox.'; }
- function radarUrl(f){return radarHost+f.path+'/512/{z}/{x}/{y}/'+RADAR_COLOR+'/1_1.png';}
- function stop(){playing=false;clearTimeout(playTimer);playTimer=null;$('playBtn').textContent='▶';$('playBtn').setAttribute('aria-label','Reproduzir histórico');}
- function showFrame(idx){ if(!frames.length)return; requestedFrame=idx;frameIdx=Math.max(0,Math.min(frames.length-1,idx));const old=layer; if(old)map.removeLayer(old); layer=L.tileLayer(radarUrl(frames[frameIdx]),{tileSize:256,opacity:opacity,maxNativeZoom:7,maxZoom:18,attribution:'Radar: <a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>',crossOrigin:false,updateWhenIdle:true,keepBuffer:1}); if(radarVisible)layer.addTo(map);updateStatus(); }
- function playStep(){ if(!playing)return;if(frameIdx>=frames.length-1){stop();return;}showFrame(frameIdx+1);playTimer=setTimeout(playStep,2300); }
- function togglePlay(){if(playing){stop();return;}if(!frames.length)return;if(frameIdx>=frames.length-1)showFrame(0);playing=true;$('playBtn').textContent='Ⅱ';$('playBtn').setAttribute('aria-label','Pausar histórico');playTimer=setTimeout(playStep,2300);}
- async function loadRadar({quiet=false}={}){ if(!quiet){msg('Atualizando catálogo de radar…');$('radarState').textContent='CONSULTANDO';} try{const c=new AbortController();const t=setTimeout(()=>c.abort(),13000);let r;try{r=await fetch(API,{signal:c.signal,cache:'no-store'});}finally{clearTimeout(t);}if(!r.ok)throw Error('HTTP '+r.status);const data=await r.json(); if(!data.host||!Array.isArray(data.radar?.past)||!data.radar.past.length)throw Error('catálogo de radar vazio');const next=data.radar.past.slice(-MAX_FRAMES);if(next.at(-1)?.time===frames.at(-1)?.time && quiet)return;stop();radarHost=data.host.replace(/\/$/,'');frames=next;frameIdx=frames.length-1;$('timeline').max=String(frames.length-1);$('timeline').disabled=false;showFrame(frameIdx);msg('Radar disponível. A ausência de eco não garante cobertura.','success');}catch(e){console.error('Erro no RainViewer:',e);if(!quiet||!frames.length)msg('Sem radar: verifique internet ou disponibilidade da API.','error');$('radarState').textContent=frames.length?'RADAR ANTIGO':'SEM RADAR';} }
- function setCoverage(on){coverageVisible=on;$('coverageBtn').setAttribute('aria-pressed',String(on));if(coverageLayer){map.removeLayer(coverageLayer);coverageLayer=null;}if(on){const host=radarHost||'https://tilecache.rainviewer.com';coverageLayer=L.tileLayer(host+'/v2/coverage/0/512/{z}/{x}/{y}/0/0_0.png',{tileSize:256,opacity:.32,maxNativeZoom:7,maxZoom:18,attribution:'Cobertura: RainViewer'});coverageLayer.addTo(map);toast('Áreas escuras indicam ausência de cobertura na máscara do provedor.');}}
- function gpsError(e){if(e?.code===1 && gpsWatch!==null){navigator.geolocation.clearWatch(gpsWatch);gpsWatch=null;}const s=e?.code===1?'Permissão de localização negada. Ative-a no navegador.':e?.code===2?'GPS indisponível. Tente ao ar livre.':'Não foi possível obter posição GPS.';msg(s,'error');$('gpsStatus').textContent='Sem posição';toast(s);}
- function updateGPS(pos){const lat=pos.coords.latitude,lon=pos.coords.longitude,point=L.latLng(lat,lon);userLatLng=point;const accuracy=Math.round(pos.coords.accuracy||0); if(!userMarker){userMarker=L.marker(point,{icon:userIcon,zIndexOffset:700}).addTo(map);accuracyCircle=L.circle(point,{radius:accuracy,weight:1,color:'#276ae8',fillOpacity:.1}).addTo(map);}else{userMarker.setLatLng(point);accuracyCircle.setLatLng(point).setRadius(accuracy);}if(follow)map.setView(point,Math.max(map.getZoom(),10),{animate:true});$('gpsStatus').textContent='GPS ±'+accuracy+' m';$('followBtn').disabled=false;$('gpsBtn').classList.add('active');$('followBtn').classList.toggle('active',follow);if(destLatLng && (!lastRouteOrigin || point.distanceTo(lastRouteOrigin)>2500))getRoute();}
- function enableGPS(){if(!window.isSecureContext){toast('O GPS exige HTTPS. Publique no GitHub Pages ou abra via localhost.');msg('GPS exige abrir a página em HTTPS.','error');return;}if(!navigator.geolocation){toast('Este navegador não oferece geolocalização.');return;}if(gpsWatch!==null){follow=true;$('followBtn').classList.add('active');if(userLatLng)map.setView(userLatLng,Math.max(map.getZoom(),12));return;}follow=true;msg('Solicitando permissão do GPS…');gpsWatch=navigator.geolocation.watchPosition(updateGPS,gpsError,{enableHighAccuracy:true,maximumAge:12000,timeout:20000}); }
- function setPanelCollapsed(collapsed){panelCollapsed=collapsed;$('controlPanel').classList.toggle('collapsed',collapsed);$('panelToggle').textContent=collapsed?'Controles ▴':'Recolher ▾';$('panelToggle').setAttribute('aria-expanded',String(!collapsed));setTimeout(()=>map.invalidateSize(),120);}
- function startDestinationSelection(){selectDest=!selectDest;$('destBtn').classList.toggle('active',selectDest);if(selectDest){setPanelCollapsed(true);$('mapNotice').textContent='⚑ Toque em um ponto no mapa para marcar o destino';toast('Toque no mapa onde deseja chegar.');}else $('mapNotice').textContent='Escolha seu destino para desenhar a rota';}
- function frameRoute(){if(!routeLayer||!routeNeedsFit)return;routeNeedsFit=false;const bounds=routeLayer.getBounds();if(bounds?.isValid?.())map.fitBounds(bounds,{paddingTopLeft:[24,104],paddingBottomRight:[24,116],maxZoom:14,animate:true});}
- function setDestination(point,name=''){destLatLng=point;destLabel=name||point.lat.toFixed(4)+', '+point.lng.toFixed(4);routeNeedsFit=true;follow=false;selectDest=false;$('followBtn').classList.remove('active');$('destBtn').classList.remove('active');if(destMarker)map.removeLayer(destMarker);destMarker=L.marker(point,{icon:destIcon}).addTo(map).bindPopup('Destino: '+destLabel).openPopup();$('wazeBtn').disabled=false;$('mapsBtn').disabled=false;$('clearBtn').disabled=false;$('routeInfo').textContent='Destino: '+destLabel+(userLatLng?' • Calculando rota…':' • Ative o GPS para traçar a rota.');$('mapNotice').textContent='⚑ '+destLabel;setPanelCollapsed(true);if(userLatLng)getRoute();else toast('Destino marcado. Ative o GPS para calcular o trajeto.');}
- async function searchDestination(){
-   const query=$('destSearch').value.trim();
-   if(query.length<3){toast('Digite pelo menos 3 caracteres para buscar.');return;}
-   if(Date.now()-lastSearchAt<1100){toast('Aguarde um segundo para outra busca.');return;}
-   lastSearchAt=Date.now();$('searchBtn').disabled=true;$('searchBtn').textContent='Buscando…';$('searchResults').replaceChildren();
-   try{
-     const url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=br&q='+encodeURIComponent(query);
-     const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),11000);let response;
-     try{response=await fetch(url,{signal:ctl.signal,headers:{'Accept':'application/json'}});}finally{clearTimeout(timeout);}
-     if(!response.ok)throw Error('HTTP '+response.status);
-     const places=await response.json();
-     if(!Array.isArray(places)||!places.length){$('searchResults').textContent='Nenhum local encontrado. Tente cidade + estado ou marque no mapa.';return;}
-     for(const place of places){const lat=Number(place.lat),lng=Number(place.lon);if(!Number.isFinite(lat)||!Number.isFinite(lng))continue;
-       const b=document.createElement('button');b.className='search-item';b.type='button';b.textContent=place.display_name||lat+', '+lng;
-       b.addEventListener('click',()=>{$('searchResults').replaceChildren();setDestination(L.latLng(lat,lng),(place.display_name||query).split(',').slice(0,2).join(','));});
-       $('searchResults').appendChild(b);
-     }
-   }catch(err){console.warn('Erro na pesquisa de destino',err);$('searchResults').textContent='Busca indisponível no momento. Use ⚑ e toque no mapa.';}
-   finally{$('searchBtn').disabled=false;$('searchBtn').textContent='Buscar';}
- }
- function clearRoute(){++currentRouteId;destLatLng=null;lastRouteOrigin=null;routeNeedsFit=false;destLabel='';selectDest=false;$('mapNotice').textContent='Escolha seu destino para desenhar a rota';$('searchResults').replaceChildren();$('destBtn').classList.remove('active');if(destMarker){map.removeLayer(destMarker);destMarker=null;}if(routeLayer){map.removeLayer(routeLayer);routeLayer=null;}$('wazeBtn').disabled=true;$('mapsBtn').disabled=true;$('clearBtn').disabled=true;$('routeInfo').textContent='Sem destino selecionado.';}
- let currentRouteId=0;
- async function getRoute(){ if(!destLatLng||!userLatLng)return;const req=++currentRouteId;lastRouteOrigin=userLatLng;const u=`https://router.project-osrm.org/route/v1/driving/${userLatLng.lng},${userLatLng.lat};${destLatLng.lng},${destLatLng.lat}?overview=full&geometries=geojson&steps=false`;try{const response=await fetch(u);if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();if(req!==currentRouteId||!destLatLng)return;const route=data.routes?.[0];if(!route||!route.geometry)throw Error('sem rota');if(routeLayer)map.removeLayer(routeLayer);routeLayer=L.geoJSON(route.geometry,{style:{color:'#1a67dc',weight:6,opacity:.84}}).addTo(map);let km=(route.distance/1000).toFixed(1);let h=Math.floor(route.duration/3600);let mn=Math.round(route.duration%3600/60);$('routeInfo').textContent='Rota para '+destLabel+': '+km+' km · '+(h?h+'h ':'')+mn+'min (perfil automóvel/OSRM).';frameRoute();}catch(e){console.warn('Falha na rota',e);if(req!==currentRouteId)return;if(routeLayer)map.removeLayer(routeLayer);routeLayer=L.polyline([userLatLng,destLatLng],{color:'#eea12e',dashArray:'7 8',weight:4}).addTo(map);$('routeInfo').textContent='Roteamento indisponível. Linha tracejada indica apenas a direção, não a estrada.';frameRoute();}}
- function openNav(which){if(!destLatLng)return;const a=destLatLng;let url=which==='waze'?`https://waze.com/ul?ll=${encodeURIComponent(a.lat+','+a.lng)}&navigate=yes`:`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(a.lat+','+a.lng)}&travelmode=driving`;window.open(url,'_blank','noopener');}
- function init(){if(typeof L==='undefined'){msg('Não foi possível carregar a biblioteca do mapa (Leaflet).','error');$('radarState').textContent='SEM MAPA';return;}createIcons();map=L.map('map',{zoomControl:false,preferCanvas:true,attributionControl:true}).setView([-15.7942,-47.8822],10);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',updateWhenIdle:true,keepBuffer:1}).addTo(map);
- map.on('dragstart',()=>{follow=false;$('followBtn').classList.remove('active');});map.on('click',e=>{if(selectDest)setDestination(e.latlng);});map.on('contextmenu',e=>setDestination(e.latlng));
- $('gpsBtn').onclick=enableGPS;$('followBtn').onclick=()=>{follow=!follow;$('followBtn').classList.toggle('active',follow);if(follow&&userLatLng)map.setView(userLatLng,Math.max(map.getZoom(),12));};$('destBtn').onclick=startDestinationSelection;$('pickDestinationBtn').onclick=startDestinationSelection;$('panelToggle').onclick=()=>setPanelCollapsed(!panelCollapsed);$('searchForm').onsubmit=e=>{e.preventDefault();searchDestination();};$('refreshBtn').onclick=()=>loadRadar();
- $('prevBtn').onclick=()=>{stop();showFrame(frameIdx-1);};$('nextBtn').onclick=()=>{stop();showFrame(frameIdx+1);};$('playBtn').onclick=togglePlay;
- $('timeline').oninput=e=>{stop();showFrame(Number(e.target.value));};$('opacity').oninput=e=>{opacity=Number(e.target.value)/100;$('opacityTxt').textContent=Math.round(100*opacity)+'%';if(layer)layer.setOpacity(opacity);};
- $('layerBtn').onclick=()=>{radarVisible=!radarVisible;$('layerBtn').setAttribute('aria-pressed',String(radarVisible));$('layerBtn').textContent=radarVisible?'Radar visível':'Radar oculto';if(layer){if(radarVisible)layer.addTo(map);else map.removeLayer(layer);}};
- $('coverageBtn').onclick=()=>setCoverage(!coverageVisible);$('wazeBtn').onclick=()=>openNav('waze');$('mapsBtn').onclick=()=>openNav('maps');$('clearBtn').onclick=()=>{clearRoute();};
- loadRadar(); refreshTimer=setInterval(()=>loadRadar({quiet:true}),600000);setInterval(updateStatus,60000);
- if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
- }
- window.addEventListener('load',init);
-})();
-</script>
 </body>
 </html>
