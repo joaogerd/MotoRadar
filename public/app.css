@@ -56,3 +56,8 @@ body:has(.navigation-panel:not([hidden])) .navigation-heading p{font-size:17px;l
 @media(max-height:600px){.trip-dashboard{padding:7px 11px}.trip-metrics{padding:6px 0}.trip-actions{margin-top:5px}.trip-actions button{min-height:40px}.trip-stage{padding-bottom:5px}}
 
 .trip-nav-remaining[hidden]{display:none!important}
+
+/* Acompanhamento GPS em navegação: botão destaca quando câmera acompanha a moto. */
+.trip-actions #navigationCenterBtn.following{background:#c9eee3;color:#075f49;box-shadow:inset 0 0 0 2px #60b59b}
+.gps-pin{position:relative}
+.gps-pin::before{content:'';position:absolute;left:50%;bottom:calc(100% - 1px);transform:translateX(-50%) rotate(var(--gps-heading,0deg));transform-origin:50% 100%;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:14px solid #2a80ef;filter:drop-shadow(0 -1px 1px white)}

@@ -13,6 +13,12 @@
     const h=Math.sin(dLat/2)**2 + Math.cos(a.lat*R)*Math.cos(b.lat*R)*Math.sin(dLng/2)**2;
     return 2*EARTH*Math.atan2(Math.sqrt(h),Math.sqrt(Math.max(0,1-h)));
   }
+  function bearingBetween(a,b) {
+    const lat1=a.lat*R,lat2=b.lat*R,dl=(b.lng-a.lng)*R;
+    const y=Math.sin(dl)*Math.cos(lat2);
+    const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dl);
+    return (Math.atan2(y,x)/R+360)%360;
+  }
   function fmt(m) {
     if (m>=1000) return `${(m/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})} km`;
     return `${Math.max(0, Math.round(m/10)*10)} m`;
@@ -126,5 +132,5 @@
     }
     return {update,get passedStops(){return passedStops;}};
   }
-  return {createSession,instructionFor,fmt,meters,projection};
+  return {createSession,instructionFor,fmt,meters,bearingBetween,projection};
 });

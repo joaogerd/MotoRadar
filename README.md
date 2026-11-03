@@ -4,7 +4,7 @@ Uma forma simples de **planejar viagens com várias paradas e consultar radar me
 
 Site: https://motoradar-7fbd3.web.app/ · [CI/CD](https://github.com/joaogerd/MotoRadar/actions)
 
-## O que existe na v0.7
+## O que existe na v0.8
 
 - Mapa em tela cheia com painel compacto e recolhível, inspirado na simplicidade dos aplicativos de navegação;
 - **Tela cheia nativa:** solicitada automaticamente ao iniciar a navegação; botões ⛶ permitem entrar/sair também no mapa antes de viajar (sujeita a restrições do navegador).
@@ -83,3 +83,9 @@ RainViewer gratuita é histórica e pode não detectar precipitação à superf�
 ⚠️ Navegação experimental: manter outro navegador de referência disponível;
 não operar controles enquanto pilota. Uma PWA em segundo plano ou com tela
 bloqueada pode perder GPS e instruções por voz.
+
+## v0.8 — câmera acompanhando a moto
+
+Ao navegar, a câmera reposiciona o mapa a cada atualização do GPS, mantendo a moto mais abaixo da área útil, para mostrar mais via à frente. Quando disponível, o mapa gira conforme o rumo real do deslocamento através de uma extensão opcional do Leaflet; se essa extensão falhar, o acompanhamento continua no modo norte-para-cima. Arrastar o mapa pausa o acompanhamento; o botão ◎ o retoma. Um GPS com baixa precisão não desloca a câmera.
+
+A navegação é experimental e não substitui um app homologado. Nunca manipule a tela pilotando.

@@ -13,10 +13,11 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=7">
+<link rel="stylesheet" href="app.css?v=8">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="navigation.js?v=7"></script>
-<script defer src="app.js?v=7"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
+<script defer src="navigation.js?v=8"></script>
+<script defer src="app.js?v=8"></script>
 </head>
 <body>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
@@ -78,7 +79,7 @@
    </div>
    <div class="navigation-actions trip-actions">
      <button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia">⛶</button>
-     <button id="navigationCenterBtn" type="button" aria-label="Centralizar no GPS" title="Centralizar">◎</button>
+     <button id="navigationCenterBtn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar">◎</button>
      <button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz">🔊</button>
      <button id="navigationStopBtn" type="button">Encerrar viagem</button>
    </div>

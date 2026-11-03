@@ -28,7 +28,7 @@ def test_multi_stop_without_gps_and_settings():
                     """)
                     def intercept(route):
                         url=route.request.url
-                        if any(host in url for host in ['unpkg.com','tile.openstreetmap.org','tilecache.rainviewer.com']):
+                        if any(host in url for host in ['unpkg.com','cdn.jsdelivr.net','tile.openstreetmap.org','tilecache.rainviewer.com']):
                             route.abort();return
                         if 'api.rainviewer.com/public/weather-maps.json' in url:
                             route.fulfill(status=200,content_type='application/json',body='{"host":"https://tilecache.rainviewer.com","radar":{"past":[{"time":1783092600,"path":"/v2/radar/1783092600"}]}}');return
@@ -43,7 +43,7 @@ def test_multi_stop_without_gps_and_settings():
                         route.continue_()
                     context.route('**/*',intercept)
                     page=context.new_page()
-                    html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=7">','<style>'+ (ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=7"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=7"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
+                    html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=8">','<style>'+ (ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=8"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=8"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
                     page.set_content(html,wait_until='load')
                     # Build complete route using manual origin, stop, and destination without GPS.
                     def choose(field,name):

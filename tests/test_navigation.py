@@ -29,6 +29,12 @@ def run_node(js):
     return json.loads(result.stdout)
 
 
+def test_heading_from_points_when_gps_heading_unavailable():
+    vals=run_node("""const nav=require('./navigation.js');console.log(JSON.stringify({north:nav.bearingBetween({lat:0,lng:0},{lat:1,lng:0}),east:nav.bearingBetween({lat:0,lng:0},{lat:0,lng:1})}));""")
+    assert abs(vals['north'])<0.01
+    assert abs(vals['east']-90)<0.01
+
+
 def test_turn_instructions_and_gps_off_route_recalculation():
     data = run_node('''
 const N=require('./navigation.js');
@@ -96,6 +102,7 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
             context=browser.new_context(viewport={'width':390,'height':844})
             context.add_init_script('''
+                window.__mapViews=[];window.__mapHeadings=[];window.__mapHandlers={};
                 Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});
                 window.__lines=0;window.__spoken=[];window.__routes=[];
                 window.__fullscreenRequests=0;window.__fullscreenExits=0;window.__fullscreen=null;
@@ -106,12 +113,12 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
                 window.SpeechSynthesisUtterance=function(text){this.text=text;this.lang='pt-BR'};
                 Object.defineProperty(navigator,'geolocation',{configurable:true,value:{watchPosition:(success,fail)=>{window.__gps=success;setTimeout(()=>success({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}}),10);return 77},clearWatch:()=>{}}});
                 const layer=()=>({addTo(){return this},setLatLng(){return this},setRadius(){return this},setOpacity(){return this},getBounds(){return {isValid:()=>true}}});
-                window.L={latLng:(lat,lng)=>({lat,lng,distanceTo(p){return Math.hypot((lat-p.lat)*110000,(lng-p.lng)*105000)}}),divIcon:()=>({}),
-                map:()=>({setView(){return this},getZoom(){return 15},on(){return this},fitBounds(){return this},removeLayer(){},panTo(){},getBounds(){return {}}}),tileLayer:()=>layer(),marker:()=>layer(),circle:()=>layer(),geoJSON:()=>{window.__lines++;return layer()},polyline:()=>layer()};
+                window.L={point:(x,y)=>({x,y}),latLng:(lat,lng)=>({lat,lng,distanceTo(p){return Math.hypot((lat-p.lat)*110000,(lng-p.lng)*105000)}}),divIcon:()=>({}),
+                map:()=>({setView(point,zoom,opts){window.__mapViews.push({lat:point.lat,lng:point.lng,zoom,opts});return this},getZoom(){return 15},getSize(){return {x:390,y:844}},project(pt){return {x:pt.lng*10000,y:pt.lat*10000}},unproject(pt){return {lat:pt.y/10000,lng:pt.x/10000}},setHeading(h){window.__mapHeadings.push(h);return this},stopHeadingUp(){},setBearing(){},on(k,fn){window.__mapHandlers[k]=fn;return this},fitBounds(){return this},removeLayer(){},panTo(){},getBounds(){return {}}}),tileLayer:()=>layer(),marker:()=>layer(),circle:()=>layer(),geoJSON:()=>{window.__lines++;return layer()},polyline:()=>layer()};
             ''')
             def intercept(route):
                 url=route.request.url
-                if 'unpkg.com/' in url or 'tile.openstreetmap.org' in url or 'tilecache.rainviewer.com' in url:
+                if ('unpkg.com/' in url or 'cdn.jsdelivr.net/' in url) or 'tile.openstreetmap.org' in url or 'tilecache.rainviewer.com' in url:
                     route.abort();return
                 if 'api.rainviewer.com/public/weather-maps.json' in url:
                     route.fulfill(status=200,content_type='application/json',body='{"host":"https://tilecache.rainviewer.com","radar":{"past":[{"time":1783092600,"path":"/v2/radar/1783092600"}]}}');return
@@ -122,10 +129,10 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page=context.new_page()
             page.evaluate('location.hash = "roteiro=brasilia"')
             html=(ROOT/'index.html').read_text()
-            html=html.replace('<link rel="stylesheet" href="app.css?v=7">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
+            html=html.replace('<link rel="stylesheet" href="app.css?v=8">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
             html=html.replace('<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>','')
-            html=html.replace('<script defer src="navigation.js?v=7"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
-            html=html.replace('<script defer src="app.js?v=7"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
+            html=html.replace('<script defer src="navigation.js?v=8"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
+            html=html.replace('<script defer src="app.js?v=8"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
             page.set_content(html,wait_until='load')
             page.wait_for_function('window.__lines >= 2',timeout=12000)
             assert page.locator('#startNavigationBtn').is_visible()
@@ -136,6 +143,24 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert page.locator('#routePanel').is_hidden() or page.locator('#routePanel').evaluate('(el)=>el.classList.contains("minimized")')
             assert page.locator('#tripDashboard').is_visible()
             assert page.locator('#tripSpeed').inner_text() == '43'
+            # A camera deve acompanhar cada fix GPS e posicionar a moto abaixo do centro.
+            first_views=page.evaluate('window.__mapViews.slice()')
+            assert first_views, 'A camera nao recebeu nenhuma atualizacao'
+            assert first_views[-1]['lat'] != -15.8, 'Camera nao mostra a estrada adiante'
+            assert page.evaluate('window.__mapHeadings.at(-1)') == 110
+            page.evaluate('window.__gps({coords:{latitude:-15.8001,longitude:-47.999,accuracy:8,heading:100,speed:13}})')
+            later_views=page.evaluate('window.__mapViews.slice()')
+            assert len(later_views)>len(first_views), 'Camera nao seguiu nova posicao'
+            assert page.evaluate('window.__mapHeadings.at(-1)') == 100
+            # Um gesto de arrastar pausa o camera-follow; botao GPS retoma imediatamente.
+            page.evaluate('window.__mapHandlers.dragstart()')
+            paused=page.evaluate('window.__mapViews.length')
+            page.evaluate('window.__gps({coords:{latitude:-15.8001,longitude:-47.9985,accuracy:8,heading:100,speed:12}})')
+            assert page.evaluate('window.__mapViews.length') == paused
+            assert page.locator('#navigationCenterBtn').get_attribute('aria-pressed') == 'false'
+            page.locator('#navigationCenterBtn').click()
+            assert page.evaluate('window.__mapViews.length') > paused
+            assert page.locator('#navigationCenterBtn').get_attribute('aria-pressed') == 'true'
             page.evaluate('window.__gps({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:null,speed:null}})')
             assert page.locator('#tripSpeed').inner_text() == '—'
             page.evaluate('window.__gps({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}})')

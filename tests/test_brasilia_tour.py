@@ -33,7 +33,7 @@ def test_brasilia_tour_deep_link_loads_eight_stops_and_draws_circuit():
             """)
             def intercept(route):
                 url=route.request.url
-                if any(domain in url for domain in ['unpkg.com','tile.openstreetmap.org','tilecache.rainviewer.com']):
+                if any(domain in url for domain in ['unpkg.com','cdn.jsdelivr.net','tile.openstreetmap.org','tilecache.rainviewer.com']):
                     route.abort(); return
                 if 'api.rainviewer.com/public/weather-maps.json' in url:
                     route.fulfill(status=200,content_type='application/json',body='{"host":"https://tilecache.rainviewer.com","radar":{"past":[{"time":1783092600,"path":"/v2/radar/1783092600"}]}}');return
@@ -60,7 +60,7 @@ def test_brasilia_tour_deep_link_loads_eight_stops_and_draws_circuit():
                 if 'nominatim.openstreetmap.org/search' in request.url:geocode_calls.append(request.url)
             page.on('request',geocode_capture)
             page.evaluate('location.hash = "roteiro=brasilia"')
-            html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=7">','<style>'+(ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=7"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=7"></script>','<script>'+(ROOT/'app.js').read_text()+'</script>')
+            html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=8">','<style>'+(ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=8"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=8"></script>','<script>'+(ROOT/'app.js').read_text()+'</script>')
             page.set_content(html,wait_until='load')
             page.locator('#originInput').wait_for(state='attached',timeout=1500)
             assert page.locator('#originInput').input_value().startswith('Dok Hotel')
