@@ -31,7 +31,7 @@
     radarVisible:true, coverage:false, opacity:.68, animation:null,
     gpsPoint:null, gpsWatch:null, gpsMarker:null, accuracyCircle:null, follow:false,
     pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
-    nav:{active:false,waiting:false,building:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null},
+    nav:{active:false,waiting:false,building:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -239,6 +239,44 @@
     }catch(err){if(id===nav.requestId){console.warn('Recálculo indisponível',err);toast('Sem recálculo. Verifique a estrada e a conexão.');}}
     finally{if(id===nav.requestId)nav.building=false;}
   }
+  function isFullscreen(){return !!document.fullscreenElement;}
+  function refreshFullscreenButtons(){
+    const active=isFullscreen();
+    for(const id of ['navigationFullscreenBtn','fullscreenFloatingBtn']){
+      const btn=$(id);if(!btn)continue;
+      btn.setAttribute('aria-pressed',String(active));
+      btn.setAttribute('aria-label',active?'Sair da tela cheia':'Ativar tela cheia');
+      btn.title=active?'Sair da tela cheia':'Tela cheia';
+      btn.textContent=active?'⤢':'⛶';
+    }
+    // O Leaflet precisa recalcular o tamanho após a mudança do viewport.
+    if(state.mapReady)setTimeout(()=>state.map.invalidateSize?.(),140);
+  }
+  function enterFullscreen(fromNavigation=false){
+    if(isFullscreen()){refreshFullscreenButtons();return;}
+    if(typeof document.documentElement.requestFullscreen!=='function'){
+      if(!fromNavigation)toast('Tela cheia não disponível neste navegador. Instale o MotoRadar na tela inicial do Android.');
+      return;
+    }
+    // Chamar diretamente no clique; o Fullscreen API exige ativação do usuário.
+    try{
+      const request=document.documentElement.requestFullscreen({navigationUI:'hide'});
+      if(fromNavigation)state.nav.fullscreenOwned=true;
+      Promise.resolve(request).catch(()=>{
+        if(fromNavigation)state.nav.fullscreenOwned=false;
+        if(!fromNavigation)toast('O navegador bloqueou a tela cheia. Abra no Chrome ou instale o aplicativo.');
+        refreshFullscreenButtons();
+      });
+    }catch(error){
+      if(fromNavigation)state.nav.fullscreenOwned=false;
+      if(!fromNavigation)toast('Tela cheia indisponível neste navegador.');
+    }
+  }
+  function exitFullscreen(){
+    if(!isFullscreen())return;
+    try{Promise.resolve(document.exitFullscreen()).catch(()=>{});}catch(_){}
+  }
+  function toggleFullscreen(){if(isFullscreen())exitFullscreen();else enterFullscreen(state.nav.active||state.nav.waiting);}
   function startNavigation(){
     if(state.nav.active||state.nav.waiting)return;
     if(!isReady()||!state.routeData){toast('Primeiro calcule uma rota com saída, paradas e destino.');return;}
@@ -251,7 +289,7 @@
     navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
     $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
     $('navigationNextStop').textContent='GPS em tempo real';$('navigationGpsState').textContent='Solicitando localização';
-    keepAwake();enableGPS(false);
+    enterFullscreen(true);keepAwake();enableGPS(false);
     if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
     // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
   }
@@ -259,6 +297,7 @@
     const nav=state.nav;
     nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('routePanel').hidden=false;
+    if(nav.fullscreenOwned)exitFullscreen();nav.fullscreenOwned=false;
     if(nav.previewRoute)showRoute(nav.previewRoute);
     nav.previewRoute=null;
     $('routeSummary').hidden=!state.routeData;
@@ -341,6 +380,8 @@
     $('brasiliaTourBtn').onclick=loadBrasiliaTour;
     $('mapsBtn').onclick=openMaps;$('wazeBtn').onclick=openWaze;
     $('startNavigationBtn').onclick=startNavigation; $('navigationStopBtn').onclick=()=>stopNavigation();
+    $('navigationFullscreenBtn').onclick=toggleFullscreen;$('fullscreenFloatingBtn').onclick=toggleFullscreen;
+    document.addEventListener('fullscreenchange',()=>{if(!isFullscreen())state.nav.fullscreenOwned=false;refreshFullscreenButtons();});
     $('navigationCenterBtn').onclick=()=>{state.follow=true;if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
     $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;$('navigationVoiceBtn').textContent=state.nav.muted?'🔇':'🔊';$('navigationVoiceBtn').setAttribute('aria-pressed',String(!state.nav.muted));if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && (state.nav.active||state.nav.waiting))keepAwake();});

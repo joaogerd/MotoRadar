@@ -60,7 +60,7 @@ def test_brasilia_tour_deep_link_loads_eight_stops_and_draws_circuit():
                 if 'nominatim.openstreetmap.org/search' in request.url:geocode_calls.append(request.url)
             page.on('request',geocode_capture)
             page.evaluate('location.hash = "roteiro=brasilia"')
-            html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=5">','<style>'+(ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=5"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=5"></script>','<script>'+(ROOT/'app.js').read_text()+'</script>')
+            html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=6">','<style>'+(ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=6"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=6"></script>','<script>'+(ROOT/'app.js').read_text()+'</script>')
             page.set_content(html,wait_until='load')
             page.locator('#originInput').wait_for(state='attached',timeout=1500)
             assert page.locator('#originInput').input_value().startswith('Dok Hotel')

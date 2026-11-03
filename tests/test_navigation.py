@@ -98,6 +98,10 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             context.add_init_script('''
                 Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});
                 window.__lines=0;window.__spoken=[];window.__routes=[];
+                window.__fullscreenRequests=0;window.__fullscreenExits=0;window.__fullscreen=null;
+                Object.defineProperty(document,'fullscreenElement',{configurable:true,get:()=>window.__fullscreen});
+                Element.prototype.requestFullscreen=function(){window.__fullscreen=this;window.__fullscreenRequests++;document.dispatchEvent(new Event('fullscreenchange'));return Promise.resolve()};
+                document.exitFullscreen=function(){window.__fullscreen=null;window.__fullscreenExits++;document.dispatchEvent(new Event('fullscreenchange'));return Promise.resolve()};
                 Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak:(u)=>window.__spoken.push(u.text),cancel:()=>{},getVoices:()=>[]}});
                 window.SpeechSynthesisUtterance=function(text){this.text=text;this.lang='pt-BR'};
                 Object.defineProperty(navigator,'geolocation',{configurable:true,value:{watchPosition:(success,fail)=>{window.__gps=success;setTimeout(()=>success({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}}),10);return 77},clearWatch:()=>{}}});
@@ -118,10 +122,10 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page=context.new_page()
             page.evaluate('location.hash = "roteiro=brasilia"')
             html=(ROOT/'index.html').read_text()
-            html=html.replace('<link rel="stylesheet" href="app.css?v=5">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
+            html=html.replace('<link rel="stylesheet" href="app.css?v=6">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
             html=html.replace('<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>','')
-            html=html.replace('<script defer src="navigation.js?v=5"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
-            html=html.replace('<script defer src="app.js?v=5"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
+            html=html.replace('<script defer src="navigation.js?v=6"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
+            html=html.replace('<script defer src="app.js?v=6"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
             page.set_content(html,wait_until='load')
             page.wait_for_function('window.__lines >= 2',timeout=12000)
             assert page.locator('#startNavigationBtn').is_visible()
@@ -131,9 +135,23 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
             assert page.locator('#routePanel').is_hidden() or page.locator('#routePanel').evaluate('(el)=>el.classList.contains("minimized")')
             assert page.locator('#navigationStopBtn').is_visible()
+            # A navegação entra em fullscreen com gesto do usuário; botão permite alternar.
+            assert page.evaluate('window.__fullscreenRequests') == 1
+            assert page.locator('#navigationFullscreenBtn').get_attribute('aria-pressed') == 'true'
+            page.locator('#navigationFullscreenBtn').click()
+            assert page.evaluate('window.__fullscreen') is None
+            page.locator('#navigationFullscreenBtn').click()
+            assert page.evaluate('window.__fullscreenRequests') == 2
             page.locator('#navigationStopBtn').click()
             assert page.locator('#navigationPanel').is_hidden()
+            assert page.evaluate('window.__fullscreen') is None
+            assert page.evaluate('window.__fullscreenExits') == 2
             assert page.locator('#routeSummary').is_visible()
+            # O mapa também pode ser ampliado antes de iniciar a navegação.
+            page.locator('#fullscreenFloatingBtn').click()
+            assert page.evaluate('window.__fullscreenRequests') == 3
+            page.locator('#fullscreenFloatingBtn').click()
+            assert page.evaluate('window.__fullscreenExits') == 3
             assert page.evaluate('window.__spoken.length') >= 1
             browser.close()
     finally:

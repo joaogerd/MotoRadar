@@ -13,10 +13,10 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=5">
+<link rel="stylesheet" href="app.css?v=6">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="navigation.js?v=5"></script>
-<script defer src="app.js?v=5"></script>
+<script defer src="navigation.js?v=6"></script>
+<script defer src="app.js?v=6"></script>
 </head>
 <body>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
@@ -48,7 +48,7 @@
   </div>
  </section>
  <div id="pickTip" class="pick-tip" hidden>Toque no mapa para marcar este ponto <button id="cancelPickBtn" type="button">Cancelar</button></div>
- <div class="float-actions"><button id="gpsFloatingBtn" type="button" title="Minha localização" aria-label="Mostrar minha localização">◎</button></div>
+ <div class="float-actions"><button id="fullscreenFloatingBtn" type="button" title="Tela cheia" aria-label="Ativar tela cheia" aria-pressed="false">⛶</button><button id="gpsFloatingBtn" type="button" title="Minha localização" aria-label="Mostrar minha localização">◎</button></div>
  <div class="bottom-stack">
   <div id="radarBadge" class="radar-badge"><span id="radarDot" class="radar-dot"></span><span id="radarAge">Carregando radar...</span><button id="radarQuickBtn" type="button" aria-label="Abrir controles do radar">☷</button></div>
   <section id="routeSummary" class="route-summary" aria-live="polite" hidden>
@@ -63,7 +63,7 @@
    </div>
    <div class="navigation-metrics"><span id="navigationRemaining">—</span><span id="navigationEta">—</span></div>
    <div class="navigation-foot"><div><strong id="navigationNextStop">Próxima parada</strong><small id="navigationGpsState">GPS</small></div>
-     <div class="navigation-actions"><button id="navigationCenterBtn" type="button" aria-label="Centralizar no GPS" title="Centralizar">◎</button><button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz">🔊</button><button id="navigationStopBtn" type="button">Encerrar</button></div>
+     <div class="navigation-actions"><button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Ativar tela cheia" title="Tela cheia">⛶</button><button id="navigationCenterBtn" type="button" aria-label="Centralizar no GPS" title="Centralizar">◎</button><button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz">🔊</button><button id="navigationStopBtn" type="button">Encerrar</button></div>
    </div>
    <p class="navigation-warning">Protótipo experimental • mantenha o navegador aberto e a tela ligada. Sem trânsito em tempo real.</p>
  </section>
