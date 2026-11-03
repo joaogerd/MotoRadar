@@ -13,9 +13,9 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=3">
+<link rel="stylesheet" href="app.css?v=4">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="app.js?v=3"></script>
+<script defer src="app.js?v=4"></script>
 </head>
 <body>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
@@ -40,6 +40,8 @@
    </div>
    <div id="placeResults" class="place-results" role="region" aria-live="polite" aria-label="Locais encontrados" hidden></div>
    <div class="route-tools"><button id="addStopBtn" class="text-btn" type="button">＋ Adicionar parada</button><button id="clearBtn" class="text-btn neutral" type="button">Limpar rota</button></div>
+   <button id="brasiliaTourBtn" class="text-btn" type="button">↗ Carregar passeio turístico de Brasília</button>
+   <p id="tourStatus" class="tiny-credit" role="status" aria-live="polite" hidden></p>
    <button id="drawRouteBtn" class="draw-btn" type="button">Mostrar rota no mapa</button>
    <div class="tiny-credit">Busca: © OpenStreetMap / Nominatim • Rodovias: OSRM (automóvel)</div>
   </div>
