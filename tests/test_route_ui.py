@@ -30,7 +30,7 @@ def test_multi_stops_routes_and_maps_url_present():
 def test_navigation_module_is_loaded_before_app():
     import re
     html = (ROOT / 'public/index.html').read_text()
-    scripts = re.findall(r'<script\\b[^>]*\\bsrc="([^"]+)"', html)
+    scripts = re.findall(r'<script\b[^>]*\bsrc="([^"]+)"', html)
     navigation = [(i, src) for i, src in enumerate(scripts) if src.split('?')[0] == 'navigation.js']
     application = [(i, src) for i, src in enumerate(scripts) if src.split('?')[0] == 'app.js']
     assert len(navigation) == len(application) == 1, 'Ambos os scripts devem ser carregados uma única vez'
