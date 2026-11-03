@@ -29,7 +29,7 @@ def test_multi_stops_routes_and_maps_url_present():
 
 def test_navigation_module_is_loaded_before_app():
     html=(ROOT/'public/index.html').read_text()
-    assert html.index('navigation.js?v=6') < html.index('app.js?v=6')
+    assert html.index('navigation.js?v=7') < html.index('app.js?v=7')
     app=(ROOT/'public/app.js').read_text()
     assert 'steps=true' in app and 'MotoNavigation.createSession' in app
     assert 'navigator.wakeLock' in app

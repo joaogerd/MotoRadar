@@ -4,7 +4,7 @@ Uma forma simples de **planejar viagens com várias paradas e consultar radar me
 
 Site: https://motoradar-7fbd3.web.app/ · [CI/CD](https://github.com/joaogerd/MotoRadar/actions)
 
-## O que existe na v0.6
+## O que existe na v0.7
 
 - Mapa em tela cheia com painel compacto e recolhível, inspirado na simplicidade dos aplicativos de navegação;
 - **Tela cheia nativa:** solicitada automaticamente ao iniciar a navegação; botões ⛶ permitem entrar/sair também no mapa antes de viajar (sujeita a restrições do navegador).
@@ -15,16 +15,16 @@ Site: https://motoradar-7fbd3.web.app/ · [CI/CD](https://github.com/joaogerd/Mo
 - Botões para abrir percurso no **Google Maps** e próximo ponto no **Waze**; itinerário salvo localmente no navegador.
 - **Roteiro Brasília** com 8 paradas, saída e retorno ao Dok Hotel (ADE Conjunto 16, Lote 35), acessível pelo link [Abrir o passeio](https://motoradar-7fbd3.web.app/?roteiro=brasilia) ou pelo botão no planejador. Os pontos são previamente georreferenciados, e o traçado por rodovias é calculado ao abrir o link.
 
-**Limites importantes:** a API gratuita de radar tem resolução/tempo limitados e não fornece previsão futura; mosaico e cobertura têm horários diferentes. **O Google Maps URL em navegadores móveis suporta até 3 paradas intermediárias**; a versão atual impede exportação com mais de três para não perder pontos sem avisar. O Waze abre somente o próximo ponto; não reproduz a rota inteira com paradas. A versão 0.6 inclui navegação experimental em primeiro plano, mas não substitui um aplicativo de navegação rodoviária validado.
+**Limites importantes:** a API gratuita de radar tem resolução/tempo limitados e não fornece previsão futura; mosaico e cobertura têm horários diferentes. **O Google Maps URL em navegadores móveis suporta até 3 paradas intermediárias**; a versão atual impede exportação com mais de três para não perder pontos sem avisar. O Waze abre somente o próximo ponto; não reproduz a rota inteira com paradas. A versão 0.7 inclui navegação experimental em primeiro plano, mas não substitui um aplicativo de navegação rodoviária validado.
 
-## Navegação experimental (v0.6)
+## Navegação experimental (v0.7)
 
 1. Planeje a saída, até oito paradas e o destino, ou carregue o passeio Brasília.
-2. Toque **Mostrar rota no mapa** e depois **Iniciar navegação neste mapa**.
+2. Toque **Mostrar rota no mapa** e depois **Iniciar modo viagem**.
 3. Autorize o GPS em HTTPS. O app recalcula o trajeto a partir da posição real, sem mudar o roteiro salvo.
 4. Mantenha a página do Chrome aberta e o celular visível: o mapa segue o GPS, informa a próxima manobra, distância e tempo aproximado. A voz usa a síntese de voz disponível no aparelho (pt-BR).
 5. O botão ⛶ alterna o modo tela cheia. Ao encerrar a navegação, o aplicativo retorna ao modo anterior se a tela cheia foi ativada automaticamente.
-6. Para encerrar toque **Encerrar**. O roteiro planejado é restaurado.
+6. Para encerrar toque **Encerrar viagem**. O roteiro planejado é restaurado.
 
 **Fullscreen no Android:** alguns navegadores e abas internas de aplicativos bloqueiam a Fullscreen API. Se isso ocorrer, abra o site diretamente no Chrome e instale o MotoRadar na tela inicial pelo menu do navegador (o PWA usa `display: standalone`).
 
@@ -62,3 +62,24 @@ Serviços externos: [OpenStreetMap](https://www.openstreetmap.org/copyright), [N
 - Ponte JK: ponto de referência sobre a ponte, conforme https://pt.wikipedia.org/wiki/Ponte_Juscelino_Kubitschek . O roteamento do OSRM poderá diferir das indicações de trânsito e não substitui um navegador GPS.
 
 A posição dos monumentos é uma referência cartográfica, não necessariamente a localização de estacionamento ou entrada. Confira trânsito, acessos e condições meteorológicas antes de sair.
+
+
+## Modo Viagem — v0.7
+
+Ao iniciar uma navegação, um painel superior mostra a próxima manobra; um
+painel inferior compacto apresenta **velocidade GPS**, distância restante,
+**horário aproximado de chegada**, duração estimada, próxima parada e horário/
+idade da imagem do radar. O mapa permanece livre no centro e o botão ⚙ abre
+as configurações meteorológicas sem sair da navegação. O botão **Encerrar
+viagem** retorna ao planejador. Os atalhos de tela cheia, centralização GPS e
+voz continuam disponíveis.
+
+A velocidade só é exibida se o Android informar `coords.speed` e a precisão
+horizontal for razoável; quando não houver velocidade válida ou o GPS estiver
+sem atualização, exibimos `—`, sem inventar valores. O horário de chegada é
+aproximado, derivado da duração OSRM, **sem trânsito em tempo real**. A camada
+RainViewer gratuita é histórica e pode não detectar precipitação à superfície.
+
+⚠️ Navegação experimental: manter outro navegador de referência disponível;
+não operar controles enquanto pilota. Uma PWA em segundo plano ou com tela
+bloqueada pode perder GPS e instruções por voz.

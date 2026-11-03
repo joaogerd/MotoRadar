@@ -122,10 +122,10 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page=context.new_page()
             page.evaluate('location.hash = "roteiro=brasilia"')
             html=(ROOT/'index.html').read_text()
-            html=html.replace('<link rel="stylesheet" href="app.css?v=6">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
+            html=html.replace('<link rel="stylesheet" href="app.css?v=7">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
             html=html.replace('<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>','')
-            html=html.replace('<script defer src="navigation.js?v=6"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
-            html=html.replace('<script defer src="app.js?v=6"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
+            html=html.replace('<script defer src="navigation.js?v=7"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
+            html=html.replace('<script defer src="app.js?v=7"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
             page.set_content(html,wait_until='load')
             page.wait_for_function('window.__lines >= 2',timeout=12000)
             assert page.locator('#startNavigationBtn').is_visible()
@@ -134,6 +134,20 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
             assert page.locator('#routePanel').is_hidden() or page.locator('#routePanel').evaluate('(el)=>el.classList.contains("minimized")')
+            assert page.locator('#tripDashboard').is_visible()
+            assert page.locator('#tripSpeed').inner_text() == '43'
+            page.evaluate('window.__gps({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:null,speed:null}})')
+            assert page.locator('#tripSpeed').inner_text() == '—'
+            page.evaluate('window.__gps({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}})')
+            assert page.locator('#tripSpeed').inner_text() == '43'
+            assert page.locator('#tripDistance').inner_text() != '—'
+            assert page.locator('#tripArrival').inner_text() != '—'
+            assert page.locator('#tripDuration').inner_text() != '—'
+            assert 'Radar' in page.locator('#tripRadarStatus').inner_text()
+            page.locator('#tripSettingsBtn').click()
+            assert page.locator('#settingsPanel').is_visible()
+            page.locator('#settingsClose').click()
+            assert page.locator('#settingsPanel').is_hidden()
             assert page.locator('#navigationStopBtn').is_visible()
             # A navegação entra em fullscreen com gesto do usuário; botão permite alternar.
             assert page.evaluate('window.__fullscreenRequests') == 1
@@ -144,6 +158,7 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert page.evaluate('window.__fullscreenRequests') == 2
             page.locator('#navigationStopBtn').click()
             assert page.locator('#navigationPanel').is_hidden()
+            assert page.locator('#tripDashboard').is_hidden()
             assert page.evaluate('window.__fullscreen') is None
             assert page.evaluate('window.__fullscreenExits') == 2
             assert page.locator('#routeSummary').is_visible()

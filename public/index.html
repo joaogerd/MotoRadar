@@ -13,10 +13,10 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=6">
+<link rel="stylesheet" href="app.css?v=7">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="navigation.js?v=6"></script>
-<script defer src="app.js?v=6"></script>
+<script defer src="navigation.js?v=7"></script>
+<script defer src="app.js?v=7"></script>
 </head>
 <body>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
@@ -53,19 +53,35 @@
   <div id="radarBadge" class="radar-badge"><span id="radarDot" class="radar-dot"></span><span id="radarAge">Carregando radar...</span><button id="radarQuickBtn" type="button" aria-label="Abrir controles do radar">☷</button></div>
   <section id="routeSummary" class="route-summary" aria-live="polite" hidden>
    <div class="route-summary-top"><div><strong id="routeInfo">Rota planejada</strong><small id="routeDetail">Perfil de automóvel</small></div><button id="editRouteBtn" type="button">Editar</button></div>
-   <button id="startNavigationBtn" class="start-navigation" type="button">▶ Iniciar navegação neste mapa</button>
+   <button id="startNavigationBtn" class="start-navigation" type="button">▶ Iniciar modo viagem</button>
     <div class="nav-actions"><button id="mapsBtn" class="maps-btn" type="button">Abrir Google Maps</button><button id="wazeBtn" class="waze-btn" type="button">Abrir Waze</button></div>
   </section>
  </div>
- <section id="navigationPanel" class="navigation-panel" aria-label="Navegação em andamento" aria-live="polite" hidden>
-   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow">↑</span>
+ <section id="navigationPanel" class="navigation-panel" aria-label="Próxima instrução de navegação" aria-live="polite" hidden>
+   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow" aria-hidden="true">↑</span>
      <div class="navigation-heading"><strong id="navigationTurn">—</strong><p id="navigationInstruction">Aguardando GPS…</p></div>
    </div>
-   <div class="navigation-metrics"><span id="navigationRemaining">—</span><span id="navigationEta">—</span></div>
-   <div class="navigation-foot"><div><strong id="navigationNextStop">Próxima parada</strong><small id="navigationGpsState">GPS</small></div>
-     <div class="navigation-actions"><button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Ativar tela cheia" title="Tela cheia">⛶</button><button id="navigationCenterBtn" type="button" aria-label="Centralizar no GPS" title="Centralizar">◎</button><button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz">🔊</button><button id="navigationStopBtn" type="button">Encerrar</button></div>
+ </section>
+ <section id="tripDashboard" class="trip-dashboard" aria-label="Modo Viagem" hidden>
+   <div class="trip-stage" id="tripStage"><div class="trip-destination"><span class="trip-stage-label">PRÓXIMA PARADA</span><strong id="navigationNextStop">Destino</strong><small id="navigationGpsState">Aguardando GPS…</small></div>
+     <button id="tripSettingsBtn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas">⚙</button>
    </div>
-   <p class="navigation-warning">Protótipo experimental • mantenha o navegador aberto e a tela ligada. Sem trânsito em tempo real.</p>
+   <div class="trip-metrics">
+     <div class="trip-speed"><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span><small>Velocidade GPS</small></div>
+     <div class="trip-stat"><strong id="tripDistance">—</strong><small>Distância restante</small></div>
+     <div class="trip-stat"><strong id="tripArrival">—</strong><small>Chegada estimada</small></div>
+     <div class="trip-stat"><strong id="tripDuration">—</strong><small>Tempo restante (aprox.)</small></div>
+   </div>
+   <div class="trip-utilities">
+     <span class="trip-weather" id="tripRadarStatus">Radar: consultando…</span>
+     <span class="trip-nav-remaining" id="navigationRemaining" aria-label="Distância restante" hidden>—</span><span id="navigationEta" hidden>—</span>
+   </div>
+   <div class="navigation-actions trip-actions">
+     <button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia">⛶</button>
+     <button id="navigationCenterBtn" type="button" aria-label="Centralizar no GPS" title="Centralizar">◎</button>
+     <button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz">🔊</button>
+     <button id="navigationStopBtn" type="button">Encerrar viagem</button>
+   </div>
  </section>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>

@@ -177,13 +177,28 @@
     try{state.nav.wakeLock=await navigator.wakeLock.request('screen');}catch(_){/* recurso opcional */}
   }
   function releaseWakeLock(){try{state.nav.wakeLock?.release();}catch(_){}state.nav.wakeLock=null;}
+  // Só apresentar velocidade quando o GPS fornece medida válida em m/s.
+  // Não estimar velocidade do veículo a partir de pontos espaciais ruidosos.
+  function updateTripSpeed(position){
+    const accuracy=Number(position?.coords?.accuracy);
+    const measured=position?.coords?.speed;
+    const valid=Number.isFinite(accuracy) && accuracy<=100 && measured!==null && Number.isFinite(measured) && measured>=0;
+    // speed é fornecido em m/s pela API Geolocation.
+    $('tripSpeed').textContent=valid?String(Math.round(position.coords.speed * 3.6)):'—';
+    $('tripSpeed').classList.toggle('unavailable',!valid);
+  }
   function updateNavDisplay(info){
     $('navigationArrow').textContent=info.icon||'↑';
     $('navigationInstruction').textContent=info.instruction;
     $('navigationTurn').textContent=info.lowAccuracy?'GPS impreciso':info.offRoute?'Fora da rota':MotoNavigation.fmt(info.maneuverMeters);
-    $('navigationRemaining').textContent=MotoNavigation.fmt(info.remainingMeters)+' restantes';
+    const remaining=MotoNavigation.fmt(info.remainingMeters);
+    $('navigationRemaining').textContent=remaining+' restantes';
+    $('tripDistance').textContent=remaining;
     const mins=Math.max(0,Math.round(info.etaSeconds/60));
-    $('navigationEta').textContent=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+    const readable=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+    $('navigationEta').textContent=readable;
+    $('tripDuration').textContent=readable;
+    $('tripArrival').textContent=info.lowAccuracy?'—':new Date(Date.now()+Math.max(0,info.etaSeconds)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const upcoming=state.nav.goals[info.passedStops];
     $('navigationNextStop').textContent=upcoming?'Próximo: '+upcoming.label:'Destino';
     $('navigationGpsState').textContent=info.lowAccuracy?'GPS de baixa precisão':info.offRoute?'Verificando desvio…':'GPS ativo';
@@ -196,8 +211,9 @@
     const nav=state.nav;
     if(!nav.active&&!nav.waiting)return;
     nav.lastFixAt=Date.now();
+    updateTripSpeed(position);
     const accuracy=Number(position.coords.accuracy||999);
-    if(nav.waiting){if(accuracy>100){navigationStatus('Aguardando GPS com melhor precisão…');return;}beginNavigation(p);return;}
+    if(nav.waiting){if(accuracy>100){navigationStatus('Aguardando GPS com melhor precisão…');return;}beginNavigation(p,position);return;}
     if(nav.building||!nav.session)return;
     const info=nav.session.update({lat:p.lat,lng:p.lng,accuracy,heading:position.coords.heading,speed:position.coords.speed});
     updateNavDisplay(info);
@@ -205,7 +221,7 @@
     for(const message of info.speak)voice(message);
     if(info.reroute)rerouteNavigation(p);
   }
-  async function beginNavigation(current){
+  async function beginNavigation(current,initialPosition=null){
     const nav=state.nav;
     if(!nav.waiting||nav.building)return;
     nav.building=true;nav.waiting=false;const id=++nav.requestId;
@@ -219,7 +235,7 @@
       showRoute(route);nav.session=MotoNavigation.createSession(route,nav.goals.map(g=>g.label));nav.active=true;nav.building=false;
       $('navigationPanel').hidden=false;state.follow=true;state.map.setView(current,Math.max(15,state.map.getZoom()),{animate:true});
       navigationStatus('Navegação iniciada');voice('Navegação iniciada. Acompanhe o trajeto e mantenha atenção na estrada.');
-      handleNavPosition(current,{coords:{accuracy:Math.max(1,state.nav.lastAccuracy||10),heading:0,speed:0}});
+      handleNavPosition(current,initialPosition||{coords:{accuracy:Math.max(1,state.nav.lastAccuracy||10),heading:null,speed:null}});
     }catch(err){if(id!==nav.requestId)return;console.warn('Não foi possível iniciar navegação',err);
       stopNavigation();toast('Navegação indisponível: confira a conexão e tente novamente com o GPS ativo.');
     }finally{if(id===nav.requestId)nav.building=false;}
@@ -285,7 +301,8 @@
     const nav=state.nav;
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
     nav.waiting=true;nav.building=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
-    $('navigationPanel').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
+    $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
+    $('tripSpeed').textContent='—';$('tripDistance').textContent='—';$('tripArrival').textContent='—';$('tripDuration').textContent='—';
     navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
     $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
     $('navigationNextStop').textContent='GPS em tempo real';$('navigationGpsState').textContent='Solicitando localização';
@@ -296,7 +313,7 @@
   function stopNavigation(cancelSpeech=true){
     const nav=state.nav;
     nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
-    $('navigationPanel').hidden=true;$('routePanel').hidden=false;
+    $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
     if(nav.fullscreenOwned)exitFullscreen();nav.fullscreenOwned=false;
     if(nav.previewRoute)showRoute(nav.previewRoute);
     nav.previewRoute=null;
@@ -323,7 +340,7 @@
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
   function ageMinutes(epoch){return Math.max(0,Math.round(Date.now()/60000-epoch/60));}
-  function refreshRadarBadge(){if(!state.frames.length)return;const frame=state.frames[state.frameIndex];const age=ageMinutes(frame.time);$('radarAge').textContent=`Radar ${frameTime(frame.time)} · ${age} min atrás`;$('radarFrameTime').textContent=frameTime(frame.time);$('radarDot').classList.toggle('old',age>30);$('radarTimeline').value=state.frameIndex;}
+  function refreshRadarBadge(){if(!state.frames.length)return;const frame=state.frames[state.frameIndex];const age=ageMinutes(frame.time);$('radarAge').textContent=`Radar ${frameTime(frame.time)} · ${age} min atrás`;$('tripRadarStatus').textContent=`Radar ${frameTime(frame.time)} · ${age} min`; $('tripRadarStatus').classList.toggle('stale',age>30);$('radarFrameTime').textContent=frameTime(frame.time);$('radarDot').classList.toggle('old',age>30);$('radarTimeline').value=state.frameIndex;}
   function radarTileUrl(frame){return state.radarHost+frame.path+`/512/{z}/{x}/{y}/${RAINVIEWER_COLOR}/1_1.png`;}
   function displayRadarFrame(i){if(!state.frames.length)return;state.frameIndex=Math.max(0,Math.min(i,state.frames.length-1));if(state.radarLayer)state.map.removeLayer(state.radarLayer);
     state.radarLayer=L.tileLayer(radarTileUrl(state.frames[state.frameIndex]),{tileSize:256,opacity:state.opacity,maxNativeZoom:7,maxZoom:18,attribution:'Radar: <a href="https://www.rainviewer.com/">RainViewer</a>',updateWhenIdle:true});
@@ -333,7 +350,7 @@
     const obj=await resp.json();if(!obj.host||!obj.radar?.past?.length)throw Error('Sem mosaicos');
     const frames=obj.radar.past.slice(-6);if(frames.at(-1)?.time===state.frames.at(-1)?.time)return;
     stopRadarAnimation();state.radarHost=obj.host.replace(/\/$/,'');state.frames=frames;$('radarTimeline').max=frames.length-1;$('radarTimeline').disabled=false;displayRadarFrame(frames.length-1);$('radarDot').classList.remove('error');
-  }catch(err){console.warn('Radar indisponível',err);if(!state.frames.length){$('radarAge').textContent='Radar indisponível';$('radarDot').classList.add('error');}else{$('radarAge').textContent+=' • sem atualização';$('radarDot').classList.add('old');}}
+  }catch(err){console.warn('Radar indisponível',err);if(!state.frames.length){$('radarAge').textContent='Radar indisponível';$('tripRadarStatus').textContent='Radar indisponível';$('tripRadarStatus').classList.add('stale');$('radarDot').classList.add('error');}else{$('radarAge').textContent+=' • sem atualização';$('tripRadarStatus').textContent+=' • sem atualização';$('tripRadarStatus').classList.add('stale');$('radarDot').classList.add('old');}}
   }
   function stopRadarAnimation(){clearInterval(state.animation);state.animation=null;$('radarPlayBtn').textContent='▶';}
   function toggleRadarAnimation(){if(state.animation){stopRadarAnimation();return;}if(!state.frames.length)return;
@@ -380,6 +397,7 @@
     $('brasiliaTourBtn').onclick=loadBrasiliaTour;
     $('mapsBtn').onclick=openMaps;$('wazeBtn').onclick=openWaze;
     $('startNavigationBtn').onclick=startNavigation; $('navigationStopBtn').onclick=()=>stopNavigation();
+    $('tripSettingsBtn').onclick=openSettings;
     $('navigationFullscreenBtn').onclick=toggleFullscreen;$('fullscreenFloatingBtn').onclick=toggleFullscreen;
     document.addEventListener('fullscreenchange',()=>{if(!isFullscreen())state.nav.fullscreenOwned=false;refreshFullscreenButtons();});
     $('navigationCenterBtn').onclick=()=>{state.follow=true;if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
@@ -398,7 +416,7 @@
     restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
-      $('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';},8000);
+      {$('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';$('tripSpeed').textContent='—';$('tripArrival').textContent='—';}},8000);
     const queryTour=new URLSearchParams(location.search).get('roteiro');
     const hashTour=new URLSearchParams(location.hash.replace(/^#/, '')).get('roteiro');
     if(queryTour==='brasilia'||hashTour==='brasilia')loadBrasiliaTour();

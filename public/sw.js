@@ -1,5 +1,5 @@
 // Cache somente do shell do aplicativo. NÃO armazenar tiles OSM para uso offline.
-const CACHE = 'motoradar-shell-v06';
+const CACHE = 'motoradar-shell-v07';
 const SHELL = ['./', './index.html', './app.css', './app.js', './navigation.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(()=>self.skipWaiting()));
