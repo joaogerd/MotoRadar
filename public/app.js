@@ -30,7 +30,8 @@
     stops:[], map:null, radarHost:'', frames:[], frameIndex:0, radarLayer:null, coverageLayer:null,
     radarVisible:true, coverage:false, opacity:.68, animation:null,
     gpsPoint:null, gpsWatch:null, gpsMarker:null, accuracyCircle:null, follow:false,
-    pins:[], routeLayer:null, routeRequest:0, lastRoutePoint:null,
+    pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
+    nav:{active:false,waiting:false,building:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -62,7 +63,7 @@
   function targetInput(id) {return id==='origin'?$('originInput'):id==='destination'?$('destinationInput'):document.querySelector(`[data-stop-id="${CSS.escape(id)}"] .stop-input`);}
   function setMinimized(on){$('routePanel').classList.toggle('minimized',on);$('routeToggle').setAttribute('aria-expanded',String(!on));$('routePanel').querySelector('.route-toggle-label').textContent=on?'Editar rota ⌄':'Recolher ⌃';}
   function clearSearch(){++state.searchVersion;$('placeResults').hidden=true;$('placeResults').replaceChildren();}
-  function removeOldRoute(){state.routeRequest++;removeRouteLayers();$('routeSummary').hidden=true;$('drawRouteBtn').disabled=false;$('drawRouteBtn').textContent='Mostrar rota no mapa';}
+  function removeOldRoute(){if(state.nav.active||state.nav.waiting)stopNavigation();state.routeRequest++;removeRouteLayers();state.routeData=null;$('routeSummary').hidden=true;$('drawRouteBtn').disabled=false;$('drawRouteBtn').textContent='Mostrar rota no mapa';}
   function renderStops(){const root=$('stopsList');root.replaceChildren();state.stops.forEach((stop,i)=>{
     const row=document.createElement('div');row.className='route-field';row.dataset.stopId=stop.id;
     row.innerHTML=`<span class="field-dot stop-dot"></span><div class="field-main"><label for="stop-${i}">Parada ${i+1}</label><div class="entry"><input class="stop-input" id="stop-${i}" type="search" autocomplete="off" maxlength="160" placeholder="Local da parada"><button class="place-search" type="button" aria-label="Buscar parada ${i+1}">⌕</button></div></div><div class="stop-actions"><button class="reorder-btn" type="button" aria-label="Subir parada" title="Subir" ${i===0?'disabled':''}>↑</button><button class="reorder-btn" type="button" aria-label="Descer parada" title="Descer" ${i===state.stops.length-1?'disabled':''}>↓</button><button class="reorder-btn map-stop" type="button" aria-label="Marcar parada no mapa" title="Marcar no mapa">⌖</button><button class="reorder-btn remove-btn" type="button" aria-label="Remover parada" title="Remover">✕</button></div>`;
@@ -129,19 +130,13 @@
   async function drawRoute(){const pts=allPoints();const absent=pts.findIndex(p=>!p);
     if(absent!==-1){if(absent===0&&state.origin.gps)toast('Autorize a localização GPS ou digite uma origem.');else toast(`Escolha um local válido para ${absent===0?'a saída':absent===pts.length-1?'o destino':'a parada '+absent}.`);setMinimized(false);return;}
     if(pts.length<2)return;
-    const serial=++state.routeRequest;const parts=pts.map(p=>`${p.lng},${p.lat}`).join(';');
-    const url=`https://router.project-osrm.org/route/v1/driving/${parts}?overview=full&geometries=geojson&steps=false`;
+    const serial=++state.routeRequest;
     $('drawRouteBtn').disabled=true;$('drawRouteBtn').textContent='Calculando rota…';
     try {const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),20000);let response;
-      try{response=await fetch(url,{signal:ctl.signal});}finally{clearTimeout(timeout);}
-      if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();if(serial!==state.routeRequest)return;
+      try{response=await requestRoute(pts,ctl.signal);}finally{clearTimeout(timeout);}
+      const data=response;if(serial!==state.routeRequest)return;
       const route=data.routes?.[0];if(data.code==='NoRoute'||!route?.geometry)throw Error('Sem rota disponível');
-      if(state.routeLayer)state.map.removeLayer(state.routeLayer);
-      state.routeLayer=L.geoJSON(route.geometry,{style:{color:'#ffffff',weight:10,opacity:.95}}).addTo(state.map);
-      const highlight=L.geoJSON(route.geometry,{style:{color:'#1479db',weight:6,opacity:.92}}).addTo(state.map);
-      // Os dois traços têm de ser removidos juntos ao recalcular.
-      const base=state.routeLayer;
-      state.routeLayer={getBounds:()=>base.getBounds(),addTo:()=>{},layers:[base,highlight]};
+      showRoute(route);
       const km=(route.distance/1000).toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:1});
       const mins=Math.round(route.duration/60),duration=mins>=60?`${Math.floor(mins/60)}h ${mins%60}min`:`${mins} min`;
       $('routeInfo').textContent=`${km} km · ${duration}`;
@@ -151,6 +146,129 @@
     finally{if(serial===state.routeRequest){$('drawRouteBtn').disabled=false;$('drawRouteBtn').textContent='Mostrar rota no mapa';}}
   }
   function removeRouteLayers(){if(!state.routeLayer)return;for(const l of state.routeLayer.layers||[state.routeLayer])state.map.removeLayer(l);state.routeLayer=null;}
+  function showRoute(route){
+    removeRouteLayers();state.routeData=route;
+    const base=L.geoJSON(route.geometry,{style:{color:'#ffffff',weight:10,opacity:.95}}).addTo(state.map);
+    const front=L.geoJSON(route.geometry,{style:{color:'#1479db',weight:6,opacity:.95}}).addTo(state.map);
+    state.routeLayer={getBounds:()=>base.getBounds(),layers:[base,front]};
+  }
+  // O servidor público OSRM é para demonstração: jamais consultar mais de uma vez por segundo.
+  async function requestRoute(points,signal){
+    const gap=Math.max(0,1300-(Date.now()-state.routingLastAt));
+    if(gap)await new Promise((resolve,reject)=>{const t=setTimeout(resolve,gap);signal?.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Cancelado','AbortError'));},{once:true});});
+    if(signal?.aborted)throw new DOMException('Cancelado','AbortError');
+    state.routingLastAt=Date.now();
+    const parts=points.map(p=>`${p.lng},${p.lat}`).join(';');
+    const response=await fetch(`https://router.project-osrm.org/route/v1/driving/${parts}?overview=full&geometries=geojson&steps=true`,{signal});
+    if(!response.ok)throw Error('Roteador HTTP '+response.status);
+    const result=await response.json();
+    if((result.code && result.code!=='Ok')||!result.routes?.[0]?.geometry)throw Error('Rota não disponível');
+    return result;
+  }
+  function navigationStatus(text){$('navigationInstruction').textContent=text;}
+  function voice(text){
+    if(state.nav.muted || !text || !('speechSynthesis' in window)||typeof SpeechSynthesisUtterance==='undefined')return;
+    try{const u=new SpeechSynthesisUtterance(text);u.lang='pt-BR';u.rate=1.02;u.volume=1;
+      speechSynthesis.cancel();speechSynthesis.speak(u);
+    }catch(e){console.warn('Síntese de voz indisponível',e);}
+  }
+  async function keepAwake(){
+    if(!navigator.wakeLock||state.nav.wakeLock||document.visibilityState==='hidden')return;
+    try{state.nav.wakeLock=await navigator.wakeLock.request('screen');}catch(_){/* recurso opcional */}
+  }
+  function releaseWakeLock(){try{state.nav.wakeLock?.release();}catch(_){}state.nav.wakeLock=null;}
+  function updateNavDisplay(info){
+    $('navigationArrow').textContent=info.icon||'↑';
+    $('navigationInstruction').textContent=info.instruction;
+    $('navigationTurn').textContent=info.lowAccuracy?'GPS impreciso':info.offRoute?'Fora da rota':MotoNavigation.fmt(info.maneuverMeters);
+    $('navigationRemaining').textContent=MotoNavigation.fmt(info.remainingMeters)+' restantes';
+    const mins=Math.max(0,Math.round(info.etaSeconds/60));
+    $('navigationEta').textContent=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+    const upcoming=state.nav.goals[info.passedStops];
+    $('navigationNextStop').textContent=upcoming?'Próximo: '+upcoming.label:'Destino';
+    $('navigationGpsState').textContent=info.lowAccuracy?'GPS de baixa precisão':info.offRoute?'Verificando desvio…':'GPS ativo';
+  }
+  function endNavigationComplete(){
+    voice('Você chegou ao destino');stopNavigation(false);
+    toast('Destino alcançado! O planejamento continua disponível.');
+  }
+  function handleNavPosition(p,position){
+    const nav=state.nav;
+    if(!nav.active&&!nav.waiting)return;
+    nav.lastFixAt=Date.now();
+    const accuracy=Number(position.coords.accuracy||999);
+    if(nav.waiting){if(accuracy>100){navigationStatus('Aguardando GPS com melhor precisão…');return;}beginNavigation(p);return;}
+    if(nav.building||!nav.session)return;
+    const info=nav.session.update({lat:p.lat,lng:p.lng,accuracy,heading:position.coords.heading,speed:position.coords.speed});
+    updateNavDisplay(info);
+    if(info.finished){endNavigationComplete();return;}
+    for(const message of info.speak)voice(message);
+    if(info.reroute)rerouteNavigation(p);
+  }
+  async function beginNavigation(current){
+    const nav=state.nav;
+    if(!nav.waiting||nav.building)return;
+    nav.building=true;nav.waiting=false;const id=++nav.requestId;
+    navigationStatus('Calculando rota a partir do GPS…');
+    try{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),23000);let data;
+      try{data=await requestRoute([current,...nav.goals.map(x=>x.point)],controller.signal);}
+      finally{clearTimeout(timeout);}
+      if(id!==nav.requestId)return;
+      const route=data.routes[0];
+      if(!route.legs?.length)throw Error('Servidor não retornou manobras');
+      showRoute(route);nav.session=MotoNavigation.createSession(route,nav.goals.map(g=>g.label));nav.active=true;nav.building=false;
+      $('navigationPanel').hidden=false;state.follow=true;state.map.setView(current,Math.max(15,state.map.getZoom()),{animate:true});
+      navigationStatus('Navegação iniciada');voice('Navegação iniciada. Acompanhe o trajeto e mantenha atenção na estrada.');
+      handleNavPosition(current,{coords:{accuracy:Math.max(1,state.nav.lastAccuracy||10),heading:0,speed:0}});
+    }catch(err){if(id!==nav.requestId)return;console.warn('Não foi possível iniciar navegação',err);
+      stopNavigation();toast('Navegação indisponível: confira a conexão e tente novamente com o GPS ativo.');
+    }finally{if(id===nav.requestId)nav.building=false;}
+  }
+  async function rerouteNavigation(current){
+    const nav=state.nav;if(!nav.active||nav.building)return;
+    nav.building=true;navigationStatus('Recalculando trajeto…');
+    const id=++nav.requestId;
+    const remaining=nav.goals.slice(nav.session?.passedStops||0);
+    if(!remaining.length){endNavigationComplete();return;}
+    try{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),23000);let result;
+      try{result=await requestRoute([current,...remaining.map(x=>x.point)],controller.signal);}finally{clearTimeout(timeout);}
+      if(id!==nav.requestId)return;
+      const route=result.routes[0];if(!route.legs?.length)throw Error('Manobras indisponíveis');
+      showRoute(route);nav.goals=remaining;nav.session=MotoNavigation.createSession(route,remaining.map(x=>x.label));
+      voice('Rota recalculada');navigationStatus('Rota recalculada');
+    }catch(err){if(id===nav.requestId){console.warn('Recálculo indisponível',err);toast('Sem recálculo. Verifique a estrada e a conexão.');}}
+    finally{if(id===nav.requestId)nav.building=false;}
+  }
+  function startNavigation(){
+    if(state.nav.active||state.nav.waiting)return;
+    if(!isReady()||!state.routeData){toast('Primeiro calcule uma rota com saída, paradas e destino.');return;}
+    if(typeof MotoNavigation==='undefined'){toast('Módulo de navegação não carregou. Atualize a página.');return;}
+    if(!navigator.geolocation||!window.isSecureContext){toast('Navegação exige GPS e acesso HTTPS.');return;}
+    const nav=state.nav;
+    nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
+    nav.waiting=true;nav.building=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
+    $('navigationPanel').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
+    navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
+    $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
+    $('navigationNextStop').textContent='GPS em tempo real';$('navigationGpsState').textContent='Solicitando localização';
+    keepAwake();enableGPS(false);
+    if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
+    // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
+  }
+  function stopNavigation(cancelSpeech=true){
+    const nav=state.nav;
+    nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
+    $('navigationPanel').hidden=true;$('routePanel').hidden=false;
+    if(nav.previewRoute)showRoute(nav.previewRoute);
+    nav.previewRoute=null;
+    $('routeSummary').hidden=!state.routeData;
+    releaseWakeLock();if(cancelSpeech)try{speechSynthesis.cancel();}catch(_){}
+    if(nav.ownsGpsWatch && !state.origin.gps && state.gpsWatch!==null){
+      navigator.geolocation?.clearWatch(state.gpsWatch);state.gpsWatch=null;
+      $('gpsFloatingBtn').classList.remove('active');
+    }
+    nav.ownsGpsWatch=false;state.follow=false;
+  }
   function openMaps(){if(!isReady()){toast('Defina saída, paradas e destino antes de abrir o Google Maps.');return;}
     if(state.stops.length>3){toast('O Google Maps por link em navegador móvel suporta até três paradas. Para mais, divida sua viagem em trechos; a rota completa continua aqui no MotoRadar.');return;}
     const pts=allPoints();const url=new URL('https://www.google.com/maps/dir/?api=1');url.searchParams.set('api','1');url.searchParams.set('origin',unit(pts[0]));url.searchParams.set('destination',unit(pts.at(-1)));url.searchParams.set('travelmode','driving');
@@ -185,16 +303,17 @@
   }
   function toggleRadar(on){state.radarVisible=on;$('radarVisibleBtn').textContent=on?'Ligado':'Desligado';$('radarVisibleBtn').classList.toggle('on',on);$('radarVisibleBtn').setAttribute('aria-pressed',String(on));if(state.radarLayer){if(on)state.radarLayer.addTo(state.map);else state.map.removeLayer(state.radarLayer);}}
   function toggleCoverage(on){state.coverage=on;$('radarCoverageBtn').textContent=on?'Ligada':'Desligada';$('radarCoverageBtn').classList.toggle('on',on);$('radarCoverageBtn').setAttribute('aria-pressed',String(on));if(state.coverageLayer){state.map.removeLayer(state.coverageLayer);state.coverageLayer=null;}if(on){const host=state.radarHost||'https://tilecache.rainviewer.com';state.coverageLayer=L.tileLayer(host+'/v2/coverage/0/512/{z}/{x}/{y}/0/0_0.png',{tileSize:256,opacity:.32,maxNativeZoom:7,maxZoom:18,attribution:'Cobertura: RainViewer'}).addTo(state.map);}}
-  function gpsError(error){const txt=error?.code===1?'Localização negada. Autorize o GPS no navegador ou digite sua origem.':'GPS indisponível. Você pode preencher a origem manualmente.';toast(txt);if(error?.code===1&&state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null;}}
+  function gpsError(error){const txt=error?.code===1?'Localização negada. Autorize o GPS no navegador ou digite sua origem.':'GPS indisponível. Você pode preencher a origem manualmente.';toast(txt);if(state.nav.waiting||state.nav.active)navigationStatus(txt);if(error?.code===1&&state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null;}}
   function updateGPS(pos){const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;const accuracy=Math.max(0,Math.round(pos.coords.accuracy||0));
     const icon=L.divIcon({className:'',iconSize:[19,19],iconAnchor:[9,9],html:'<div class="gps-pin"></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(p,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(p);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
-    if(state.follow)state.map.setView(p,Math.max(11,state.map.getZoom()),{animate:true});
+    if(state.follow)state.map.setView(p,Math.max(state.nav.active?15:11,state.map.getZoom()),{animate:true});
     if(state.origin.gps){state.origin.point=p;state.origin.label='Sua localização atual';$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');
-      if(state.routeLayer&&(!state.lastRoutePoint||p.distanceTo(state.lastRoutePoint)>3000)){state.lastRoutePoint=p;removeRouteLayers();drawRoute();}
+      if(!state.nav.active&&!state.nav.waiting&&state.routeLayer&&(!state.lastRoutePoint||p.distanceTo(state.lastRoutePoint)>3000)){state.lastRoutePoint=p;removeRouteLayers();drawRoute();}
     }
-    renderPins();$('gpsFloatingBtn').classList.add('active');
+    state.nav.lastFixAt=Date.now();state.nav.lastAccuracy=accuracy;
+    renderPins();$('gpsFloatingBtn').classList.add('active');handleNavPosition(p,pos);
   }
   function enableGPS(useAsOrigin=false){if(useAsOrigin){state.origin.gps=true;state.origin.point=state.gpsPoint;state.origin.label='Sua localização atual';removeOldRoute();$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');persist();}
     if(!navigator.geolocation){toast('Este navegador não oferece localização. Digite uma origem.');return;}
@@ -221,6 +340,10 @@
     $('addStopBtn').onclick=addStop;$('clearBtn').onclick=clearRoute;$('drawRouteBtn').onclick=drawRoute;
     $('brasiliaTourBtn').onclick=loadBrasiliaTour;
     $('mapsBtn').onclick=openMaps;$('wazeBtn').onclick=openWaze;
+    $('startNavigationBtn').onclick=startNavigation; $('navigationStopBtn').onclick=()=>stopNavigation();
+    $('navigationCenterBtn').onclick=()=>{state.follow=true;if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
+    $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;$('navigationVoiceBtn').textContent=state.nav.muted?'🔇':'🔊';$('navigationVoiceBtn').setAttribute('aria-pressed',String(!state.nav.muted));if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && (state.nav.active||state.nav.waiting))keepAwake();});
     document.querySelectorAll('.map-pick[data-pick]').forEach(btn=>btn.onclick=()=>setPick(btn.dataset.pick));$('cancelPickBtn').onclick=()=>{stopPick();setMinimized(false);};
     $('radarVisibleBtn').onclick=()=>toggleRadar(!state.radarVisible);
     $('radarCoverageBtn').onclick=()=>toggleCoverage(!state.coverage);
@@ -233,6 +356,8 @@
   function init(){if(typeof L==='undefined'){toast('O mapa não carregou. Confira sua conexão.');return;}
     restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
+    setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
+      $('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';},8000);
     const queryTour=new URLSearchParams(location.search).get('roteiro');
     const hashTour=new URLSearchParams(location.hash.replace(/^#/, '')).get('roteiro');
     if(queryTour==='brasilia'||hashTour==='brasilia')loadBrasiliaTour();

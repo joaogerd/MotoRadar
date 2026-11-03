@@ -14,7 +14,7 @@ class Ids(HTMLParser):
 def test_simple_navigation_and_weather_settings():
     doc = (ROOT/'public/index.html').read_text()
     parser = Ids(); parser.feed(doc)
-    assert {'originInput','destinationInput','stopsList','addStopBtn','drawRouteBtn','routeInfo','settingsBtn','settingsPanel','radarOpacity','radarTimeline','gpsUseBtn','mapsBtn','wazeBtn','routeToggle'}.issubset(parser.ids)
+    assert {'originInput','destinationInput','stopsList','addStopBtn','drawRouteBtn','routeInfo','settingsBtn','settingsPanel','radarOpacity','radarTimeline','gpsUseBtn','mapsBtn','wazeBtn','routeToggle','startNavigationBtn','navigationPanel','navigationInstruction','navigationStopBtn','navigationVoiceBtn'}.issubset(parser.ids)
     assert 'public' not in doc.lower().split('<title>')[1].split('</title>')[0]
 
 
@@ -25,3 +25,11 @@ def test_multi_stops_routes_and_maps_url_present():
     assert 'google.com/maps/dir/?api=1' in js
     assert 'https://waze.com/ul' in js
     assert 'nominatim.openstreetmap.org/search' in js
+
+
+def test_navigation_module_is_loaded_before_app():
+    html=(ROOT/'public/index.html').read_text()
+    assert html.index('navigation.js?v=5') < html.index('app.js?v=5')
+    app=(ROOT/'public/app.js').read_text()
+    assert 'steps=true' in app and 'MotoNavigation.createSession' in app
+    assert 'navigator.wakeLock' in app

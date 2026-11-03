@@ -13,9 +13,10 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=4">
+<link rel="stylesheet" href="app.css?v=5">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script defer src="app.js?v=4"></script>
+<script defer src="navigation.js?v=5"></script>
+<script defer src="app.js?v=5"></script>
 </head>
 <body>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
@@ -52,9 +53,20 @@
   <div id="radarBadge" class="radar-badge"><span id="radarDot" class="radar-dot"></span><span id="radarAge">Carregando radar...</span><button id="radarQuickBtn" type="button" aria-label="Abrir controles do radar">☷</button></div>
   <section id="routeSummary" class="route-summary" aria-live="polite" hidden>
    <div class="route-summary-top"><div><strong id="routeInfo">Rota planejada</strong><small id="routeDetail">Perfil de automóvel</small></div><button id="editRouteBtn" type="button">Editar</button></div>
-   <div class="nav-actions"><button id="mapsBtn" class="maps-btn" type="button">Abrir Google Maps</button><button id="wazeBtn" class="waze-btn" type="button">Abrir Waze</button></div>
+   <button id="startNavigationBtn" class="start-navigation" type="button">▶ Iniciar navegação neste mapa</button>
+    <div class="nav-actions"><button id="mapsBtn" class="maps-btn" type="button">Abrir Google Maps</button><button id="wazeBtn" class="waze-btn" type="button">Abrir Waze</button></div>
   </section>
  </div>
+ <section id="navigationPanel" class="navigation-panel" aria-label="Navegação em andamento" aria-live="polite" hidden>
+   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow">↑</span>
+     <div class="navigation-heading"><strong id="navigationTurn">—</strong><p id="navigationInstruction">Aguardando GPS…</p></div>
+   </div>
+   <div class="navigation-metrics"><span id="navigationRemaining">—</span><span id="navigationEta">—</span></div>
+   <div class="navigation-foot"><div><strong id="navigationNextStop">Próxima parada</strong><small id="navigationGpsState">GPS</small></div>
+     <div class="navigation-actions"><button id="navigationCenterBtn" type="button" aria-label="Centralizar no GPS" title="Centralizar">◎</button><button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz">🔊</button><button id="navigationStopBtn" type="button">Encerrar</button></div>
+   </div>
+   <p class="navigation-warning">Protótipo experimental • mantenha o navegador aberto e a tela ligada. Sem trânsito em tempo real.</p>
+ </section>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="settingsPanel" class="modal-cover" hidden>
