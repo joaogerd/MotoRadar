@@ -67,7 +67,6 @@ def test_multi_stop_without_gps_and_settings():
                     opened=page.evaluate('window.__opened.at(-1)')
                     assert 'waypoints=' in opened and 'origin=' in opened and 'destination=' in opened
                     assert 'Gama' not in opened # URLs usam coordenadas, não texto não validado
-                    page.screenshot(path='/mnt/data/MotoRadar-v03-mapa.png',full_page=True)
                     page.locator('#routeToggle').click()
                     assert page.locator('#routePanel').evaluate('(el)=>!el.classList.contains("minimized")')
                     browser.close()
