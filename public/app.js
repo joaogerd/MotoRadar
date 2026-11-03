@@ -5,6 +5,25 @@
   const MAX_STOPS = 8;
   const RAINVIEWER_COLOR = 2;
   const key = 'motoradar-route-v03';
+  // Roteiro turístico definido para a viagem de moto em Brasília (origem = retorno).
+  // Coordenadas das atrações publicadas em https://programeviagem.com/roteiros-de-viagem-sugeridos/roteiro-de-viagem-brasilia-e-goias/
+  // O endereço do Dok Hotel NÃO é estimado: consultamos o geocodificador e só traçamos a rota se for encontrado.
+  const BRASILIA_TOUR = {
+    hotel: 'Dok Hotel — ADE Conjunto 16, Lote 35, Águas Claras, Brasília, DF',
+    // Coordenada informada por catálogo do hotel: https://www.ehotelsreviews.com/dok-brasilia-hotel-unidade-aguas-claras-1468752-en
+    hotelPoint: [-15.877349,-48.013305],
+    stops: [
+      ['Memorial JK',-15.783530,-47.913720],
+      ['Torre de TV de Brasília',-15.791224,-47.894405],
+      ['Santuário Dom Bosco',-15.800857,-47.895230],
+      ['Catedral Metropolitana de Brasília',-15.797278,-47.875443],
+      ['Praça dos Três Poderes',-15.801236,-47.858459],
+      // Centro da Ponte JK, para o roteador passar pela via (15°49'25''S, 47°49'46''W).
+      ['Ponte JK (passagem)',-15.823611,-47.829444],
+      ['Pontão do Lago Sul',-15.826676,-47.873419],
+      ['Ermida Dom Bosco',-15.798237,-47.809354]
+    ]
+  };
   const state = {
     origin: {id:'origin',label:'',point:null,gps:false},
     destination: {id:'destination',label:'',point:null},
@@ -77,6 +96,23 @@
       if(!response.ok)throw Error('HTTP '+response.status);const places=await response.json();if(version!==state.searchVersion)return;searchResponse(places,target);
     }catch(error){if(version===state.searchVersion){results.hidden=false;results.innerHTML='<div class="result-empty">Serviço de busca indisponível. Você pode marcar o local diretamente no mapa.</div>';}}
     finally{state.waitingSearch=false;}
+  }
+  async function loadBrasiliaTour() {
+    if(state.tourLoading)return;
+    state.tourLoading=true;
+    clearSearch();stopPick();removeOldRoute();
+    const hotel=L.latLng(...BRASILIA_TOUR.hotelPoint);
+    state.origin={id:'origin',label:BRASILIA_TOUR.hotel,point:hotel,gps:false};
+    state.destination={id:'destination',label:BRASILIA_TOUR.hotel,point:L.latLng(hotel.lat,hotel.lng)};
+    state.stops=BRASILIA_TOUR.stops.map(([label,lat,lng],i)=>({id:`brasilia-${i+1}`,label,point:L.latLng(lat,lng)}));
+    $('originInput').value=state.origin.label;
+    $('destinationInput').value=state.destination.label;
+    $('gpsUseBtn').classList.remove('selected');
+    renderStops();renderPins();persist();
+    const status=$('tourStatus');status.hidden=false;
+    status.textContent='Passeio Brasília: oito paradas e retorno ao Dok Hotel. Verifique os acessos antes de sair.';
+    try{await drawRoute();}
+    finally{state.tourLoading=false;}
   }
   function allPoints(){const arr=[state.origin,...state.stops,state.destination];return arr.map(x=>x.gps?state.gpsPoint:x.point);}
   function isReady(){return allPoints().every(p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng));}
@@ -183,6 +219,7 @@
     document.querySelectorAll('.place-search[data-search]').forEach(btn=>btn.onclick=()=>searchPlace(btn.dataset.search));
     $('gpsUseBtn').onclick=()=>enableGPS(true);$('gpsFloatingBtn').onclick=()=>enableGPS(false);
     $('addStopBtn').onclick=addStop;$('clearBtn').onclick=clearRoute;$('drawRouteBtn').onclick=drawRoute;
+    $('brasiliaTourBtn').onclick=loadBrasiliaTour;
     $('mapsBtn').onclick=openMaps;$('wazeBtn').onclick=openWaze;
     document.querySelectorAll('.map-pick[data-pick]').forEach(btn=>btn.onclick=()=>setPick(btn.dataset.pick));$('cancelPickBtn').onclick=()=>{stopPick();setMinimized(false);};
     $('radarVisibleBtn').onclick=()=>toggleRadar(!state.radarVisible);
@@ -196,6 +233,9 @@
   function init(){if(typeof L==='undefined'){toast('O mapa não carregou. Confira sua conexão.');return;}
     restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
+    const queryTour=new URLSearchParams(location.search).get('roteiro');
+    const hashTour=new URLSearchParams(location.hash.replace(/^#/, '')).get('roteiro');
+    if(queryTour==='brasilia'||hashTour==='brasilia')loadBrasiliaTour();
     if('serviceWorker' in navigator && location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
   window.addEventListener('load',init);
