@@ -25,12 +25,13 @@
   }
   map.on('load',addCore);
   if(typeof onDrag==='function')map.on('dragstart',onDrag);
-  function update(point,heading=latestHeading){
+  function update(point,heading=latestHeading,focusY=null){
     if(!point||!Number.isFinite(point.lat)||!Number.isFinite(point.lng))return;
     latest=point;if(Number.isFinite(heading))latestHeading=heading;
     if(!ready)return;
     map.getSource?.('gps')?.setData?.(geoPoint(latest));
-    const offset=Math.min(160,Math.max(55,(map.getContainer?.()?.clientHeight||700)*.16));
+    const height=map.getContainer?.()?.clientHeight||700;
+    const offset=Number.isFinite(focusY)?focusY-height/2:Math.min(160,Math.max(55,height*.16));
     map.easeTo({center:[latest.lng,latest.lat],bearing:latestHeading,pitch:55,zoom:16.4,offset:[0,offset],duration:450,essential:true});
   }
   function setRoute(next){if(!Array.isArray(next?.coordinates))return;geometry=next;if(ready)map.getSource?.('route')?.setData?.(geometry);}

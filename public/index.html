@@ -13,17 +13,17 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=11">
+<link rel="stylesheet" href="app.css?v=12">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script defer src="navigation.js?v=11"></script>
-<script defer src="trip-history.js?v=11"></script>
-<script defer src="offline-route.js?v=11"></script>
-<script defer src="smart-stops.js?v=11"></script>
-<script defer src="weather-corridor.js?v=11"></script>
-<script defer src="echo-motion.js?v=11"></script>
-<script defer src="perspective-map.js?v=11"></script>
-<script defer src="app.js?v=11"></script>
+<script defer src="navigation.js?v=12"></script>
+<script defer src="trip-history.js?v=12"></script>
+<script defer src="offline-route.js?v=12"></script>
+<script defer src="smart-stops.js?v=12"></script>
+<script defer src="weather-corridor.js?v=12"></script>
+<script defer src="echo-motion.js?v=12"></script>
+<script defer src="perspective-map.js?v=12"></script>
+<script defer src="app.js?v=12"></script>
 </head>
 <body>
 <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -119,19 +119,23 @@
  </section>
  <section id="tripDashboard" class="trip-dashboard" aria-label="Modo Viagem" hidden>
    <div class="trip-stage" id="tripStage"><div class="trip-destination"><span class="trip-stage-label">PRÓXIMA PARADA</span><strong id="navigationNextStop">Destino</strong><small id="navigationGpsState">Aguardando GPS…</small></div>
-     <button id="tripSettingsBtn" class="icon-btn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
+     <div class="trip-stage-actions">
+       <button id="tripCompactCenterBtn" class="icon-btn" type="button" aria-label="Centralizar a moto no mapa" title="Centralizar localização" hidden><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button>
+       <button id="tripPanelToggleBtn" class="trip-panel-toggle" type="button" aria-expanded="true" aria-controls="tripMetrics tripUtilities tripActions" aria-label="Recolher painel para ver o mapa"><svg class="icon icon-sm" aria-hidden="true"><use id="tripPanelToggleIcon" href="#mr-chevron-down"></use></svg><span id="tripPanelToggleLabel">Mapa</span></button>
+       <button id="tripSettingsBtn" class="icon-btn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
+     </div>
    </div>
-   <div class="trip-metrics">
+   <div id="tripMetrics" class="trip-metrics">
      <div class="trip-speed"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-speed"></use></svg><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span><small>Velocidade GPS</small></div>
      <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-route"></use></svg><strong id="tripDistance">—</strong><small>Distância restante</small></div>
      <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-flag"></use></svg><strong id="tripArrival">—</strong><small>Chegada estimada</small></div>
      <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-timer"></use></svg><strong id="tripDuration">—</strong><small>Tempo restante (aprox.)</small></div>
    </div>
-   <div class="trip-utilities">
+   <div id="tripUtilities" class="trip-utilities">
      <span class="trip-weather" id="tripRadarStatus"><svg class="icon icon-sm" aria-hidden="true"><use href="#mr-poi-rain"></use></svg><span id="tripRadarText">Radar: consultando…</span></span>
      <span class="trip-nav-remaining" id="navigationRemaining" aria-label="Distância restante" hidden>—</span><span id="navigationEta" hidden>—</span>
    </div>
-   <div class="navigation-actions trip-actions">
+   <div id="tripActions" class="navigation-actions trip-actions">
      <button id="navigation3dBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D"><svg class="icon icon-md"><use href="#mr-icon-3d"></use></svg><span class="action-label">3D</span></button>
      <button id="navigationFullscreenBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button>
      <button id="navigationCenterBtn" class="icon-btn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar"><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button>

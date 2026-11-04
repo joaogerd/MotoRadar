@@ -161,6 +161,24 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page.locator('#navigationCenterBtn').click()
             assert page.evaluate('window.__mapViews.length') > paused
             assert page.locator('#navigationCenterBtn').get_attribute('aria-pressed') == 'true'
+            # Recentrar recolhe o painel, libertando o mapa para ver a rua.
+            assert page.locator('#tripDashboard').evaluate('(el)=>el.classList.contains("compact")')
+            assert page.locator('#tripPanelToggleBtn').get_attribute('aria-expanded') == 'false'
+            assert page.locator('#tripCompactCenterBtn').is_visible()
+            assert page.locator('#navigationStopBtn').is_hidden()
+            map_y=page.evaluate('''() => {
+                const bounds=document.querySelector("#navigationPanel").getBoundingClientRect();
+                const bottom=document.querySelector("#tripDashboard").getBoundingClientRect();
+                const H=window.L ? 844 : 844;
+                return MotoNavigation.visibleFocusY(H,bounds.bottom,bottom.top);
+            }''')
+            assert map_y>page.locator('#navigationPanel').bounding_box()['y']+50
+            assert map_y<page.locator('#tripDashboard').bounding_box()['y']
+            # O usuário consegue restaurar os controles e encerrar a viagem.
+            page.locator('#tripPanelToggleBtn').click()
+            assert not page.locator('#tripDashboard').evaluate('(el)=>el.classList.contains("compact")')
+            assert page.locator('#tripPanelToggleBtn').get_attribute('aria-expanded') == 'true'
+            assert page.locator('#navigationStopBtn').is_visible()
             page.evaluate('window.__gps({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:null,speed:null}})')
             assert page.locator('#tripSpeed').inner_text() == '—'
             page.evaluate('window.__gps({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}})')
@@ -196,3 +214,24 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             browser.close()
     finally:
         server.shutdown();server.server_close()
+
+def test_visible_focus_y_never_enters_panels():
+    results=run_node("""const N=require('./navigation.js');
+const cases=[[844,120,380],[844,120,760],[1536,250,920],[1536,250,1470],[500,180,250]];
+console.log(JSON.stringify(cases.map(c=>N.visibleFocusY(...c))));""")
+    for y,(height,top,bottom) in zip(results,[[844,120,380],[844,120,760],[1536,250,920],[1536,250,1470],[500,180,250]]):
+        assert top < y < bottom
+    assert results[1]>results[0]  # painel menor traz a moto para área mais ampla
+    assert results[3]>results[2]
+
+
+def test_compact_dashboard_accessible_without_losing_trip_actions():
+    html=(ROOT/'index.html').read_text()
+    css=(ROOT/'app.css').read_text()
+    js=(ROOT/'app.js').read_text()
+    assert 'id="tripPanelToggleBtn"' in html
+    assert 'id="tripCompactCenterBtn"' in html
+    assert 'aria-controls="tripMetrics tripUtilities tripActions"' in html
+    assert '.trip-dashboard.compact .trip-metrics' in css
+    assert "function recenterNavigation()" in js
+    assert "desiredY-size.y/2" in js

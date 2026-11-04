@@ -124,3 +124,20 @@ button:focus-visible{outline:3px solid #0d6efd;outline-offset:3px}
  .trip-metrics{gap:5px}
  .metric-icon{width:17px;height:17px}
 }
+
+
+/* Navegação v12: painel recolhível e área visível para o marcador GPS. */
+.trip-stage-actions{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.trip-panel-toggle,.trip-stage-actions #tripCompactCenterBtn{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:48px;min-width:48px;padding:0 9px;border:1px solid #d9e7f3;border-radius:14px;background:#eaf3fb;color:#17476e;font-size:12px;font-weight:800}
+.trip-panel-toggle .icon{stroke-width:2.9}
+.trip-stage-actions #tripCompactCenterBtn[hidden]{display:none!important}
+.trip-stage-actions #tripCompactCenterBtn{padding:0;background:#e2f3ee;color:#08755b}
+.trip-dashboard.compact{padding:8px 10px;border-radius:21px}
+.trip-dashboard.compact .trip-stage{padding:0;border-bottom:0;min-height:54px}
+.trip-dashboard.compact .trip-metrics,.trip-dashboard.compact .trip-utilities,.trip-dashboard.compact .trip-actions{display:none!important}
+.trip-dashboard.compact .trip-stage-label{font-size:10px}
+.trip-dashboard.compact .trip-destination strong{font-size:15px;line-height:1.25}
+.trip-dashboard.compact #navigationGpsState,.trip-dashboard.compact #tripSettingsBtn{display:none}
+.trip-dashboard.compact .trip-stage-actions #tripCompactCenterBtn{display:inline-flex}
+.trip-dashboard.compact .trip-panel-toggle{background:#eef4fa;min-width:78px}
+@media(max-width:390px){.trip-stage-actions{gap:5px}.trip-panel-toggle{padding:0 7px}.trip-dashboard.compact .trip-destination strong{font-size:14px}}

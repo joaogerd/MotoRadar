@@ -154,5 +154,16 @@
     }
     return {update,get passedStops(){return passedStops;}};
   }
-  return {createSession,instructionFor,fmt,meters,bearingBetween,projection,snapForDisplay};
+  // Retorna o Y (em pixels) no espaço livre entre os painéis, não no centro da tela inteira.
+  // Independente de DOM para possibilitar testes com tamanhos de celular diferentes.
+  function visibleFocusY(height, topPanelBottom, bottomPanelTop) {
+    const h=Number(height);
+    if(!Number.isFinite(h)||h<=0)return 0;
+    const top=Math.max(0,Math.min(h,Number.isFinite(topPanelBottom)?topPanelBottom:0));
+    const bottom=Math.max(0,Math.min(h,Number.isFinite(bottomPanelTop)?bottomPanelTop:h));
+    if(bottom<=top+80)return Math.max(0,Math.min(h,(top+bottom)/2));
+    const margin=Math.min(55,(bottom-top)*.18);
+    return top+margin+(bottom-top-2*margin)*.58;
+  }
+  return {createSession,instructionFor,fmt,meters,bearingBetween,projection,snapForDisplay,visibleFocusY};
 });
