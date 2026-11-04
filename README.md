@@ -103,3 +103,6 @@ O MotoRadar guarda uma **cópia local do último itinerário calculado** por at�
 
 ### Consulta manual de pontos de apoio
 O botão **Pontos de apoio** pesquisa até 20 estabelecimentos do cadastro comunitário OpenStreetMap, num raio de 3 km da localização GPS ou da saída escolhida. A busca usa a API Overpass mediante **toque explícito**, com intervalo de pelo menos 60 segundos por aparelho. Resultados não são verificados como abertos ou seguros e não são inseridos automaticamente na rota. Servidores Overpass públicos têm limites de uso e podem falhar.
+
+### Análise indicativa de ecos no corredor (experimental)
+Nas configurações do radar, **Examinar até 30 km** amostra pixels transparentes/coloridos do último mosaico RainViewer em pontos da rota a cada 2 km, no máximo 12 tiles. O produto é histórico, não quantitativo, limitado a zoom 7 e não usa previsão. Se um pixel colorido é encontrado, informa o primeiro eco amostrado e a idade do mosaico. Se não encontra eco, **não afirma ausência de precipitação nem cobertura**. Falha de acesso CORS ou de fonte aparece explicitamente como indisponível. Avisos por voz só ocorrem mediante opt-in, com limitação temporal; nunca substituem prudência do condutor nem o monitoramento meteorológico operacional. Validação com pixels reais em diferentes redes ainda pendente.
