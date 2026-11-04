@@ -69,11 +69,30 @@
       const progress=accum+len*fraction;
       // Prefer a nearby forward segment on overlapping round trips.
       const penalty=progress+90<prevMeters ? 250+Math.min(1500,prevMeters-progress) : 0;
-      const candidate={lateralMeters:d,progressMeters:progress,score:d+penalty};
+      const candidate={lateralMeters:d,progressMeters:progress,score:d+penalty,snappedPoint:{lat:p1.lat+(p2.lat-p1.lat)*fraction,lng:p1.lng+(p2.lng-p1.lng)*fraction},segmentBearing:bearingBetween(p1,p2)};
       if(!best || candidate.score<best.score)best=candidate;
       accum+=len;
     }
     return {...best,totalGeometryMeters:accum};
+  }
+  // Ajuste APENAS visual: não substitui coordenadas reais no cálculo de desvios.
+  function snapForDisplay(point,coords,options={}) {
+    const raw={lat:point?.lat,lng:point?.lng};
+    const accuracy=Number(options.accuracy);
+    if(!Array.isArray(coords)||coords.length<2 ||
+       !Number.isFinite(raw.lat)||!Number.isFinite(raw.lng) ||
+       !Number.isFinite(accuracy)||accuracy<0||accuracy>35)
+      return {point:raw,matched:false,reason:'gps-ou-rota-indisponivel'};
+    const best=projection(raw,coords,Math.max(0,Number(options.progressMeters)||0));
+    const limit=Math.max(18,Math.min(36,accuracy*1.75));
+    if(!best||best.lateralMeters>limit)return {point:raw,matched:false,reason:'distante-da-rota'};
+    const heading=Number(options.heading),speed=Number(options.speed);
+    if(options.heading!=null&&Number.isFinite(heading) && heading>=0&&heading<360&&
+       options.speed!=null && Number.isFinite(speed)&&speed>=2) {
+      const diff=Math.abs((heading-best.segmentBearing+540)%360-180);
+      if(diff>65)return {point:raw,matched:false,reason:'rumo-incompativel'};
+    }
+    return {point:best.snappedPoint,matched:true,lateralMeters:best.lateralMeters,progressMeters:best.progressMeters};
   }
   function createSession(route,stopNames=[]) {
     if(!Array.isArray(route?.geometry?.coordinates)||route.geometry.coordinates.length<2 || !Array.isArray(route.legs))throw new Error('Rota com manobras inválida');
@@ -132,5 +151,5 @@
     }
     return {update,get passedStops(){return passedStops;}};
   }
-  return {createSession,instructionFor,fmt,meters,bearingBetween,projection};
+  return {createSession,instructionFor,fmt,meters,bearingBetween,projection,snapForDisplay};
 });
