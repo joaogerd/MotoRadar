@@ -215,7 +215,7 @@
     $('tripDuration').textContent=readable;
     $('tripArrival').textContent=info.lowAccuracy?'—':new Date(Date.now()+Math.max(0,info.etaSeconds)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const upcoming=state.nav.goals[info.passedStops];
-    $('navigationNextStop').textContent=upcoming?'Próximo: '+upcoming.label:'Destino';
+    $('navigationNextStop').textContent=upcoming?upcoming.label:'Destino';
     $('navigationGpsState').textContent=info.lowAccuracy?'GPS de baixa precisão':info.offRoute?'Verificando desvio…':'GPS ativo';
   }
   function endNavigationComplete(){
@@ -589,7 +589,7 @@
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
     const shown=snap.matched?L.latLng(snap.point.lat,snap.point.lng):p;
-    const icon=L.divIcon({className:'',iconSize:[48,52],iconAnchor:[24,26],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-bike" viewBox="0 0 48 52"><path class="bike-outline" d="M9 21q15-8 30 0M16 21h16M17 23v21h14V23Z"/><path class="bike-body" d="M20 17h8l5 11-5 15H20l-5-15z"/><circle class="bike-helmet" cx="24" cy="14" r="8"/><path class="bike-visor" d="M18 13q6-4 12 0"/><path class="bike-tail" d="M20 36h8"/></svg></div>'});
+    const icon=L.divIcon({className:'',iconSize:[48,52],iconAnchor:[24,26],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-bike" viewBox="0 0 48 52"><ellipse class="bike-tire" cx="24" cy="7" rx="5" ry="6"/><path class="bike-handlebar" d="M10 19H38"/><circle class="bike-mirror" cx="8" cy="19" r="3.5"/><circle class="bike-mirror" cx="40" cy="19" r="3.5"/><path class="bike-body" d="M19 22h10l5 12-5 12H19l-5-12z"/><circle class="bike-helmet" cx="24" cy="18" r="8"/><path class="bike-visor" d="M19 17q5-4 10 0"/><ellipse class="bike-tire" cx="24" cy="47" rx="5" ry="4"/><path class="bike-tail" d="M19 39h10"/></svg></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0,visibleNavigationFocusY());}

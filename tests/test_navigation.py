@@ -147,7 +147,13 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert metrics_columns == 2, 'O painel de métricas deve ter duas colunas legíveis'
             banner=page.locator('#navigationPanel').bounding_box()
             dashboard=page.locator('#tripDashboard').bounding_box()
-            assert banner['y']+banner['height']+65 < dashboard['y'], 'O mapa deve ter área livre entre os painéis'
+            brand=page.locator('#navigationBrand').bounding_box()
+            toggle=page.locator('#tripPanelToggleBtn').bounding_box()
+            assert brand['height'] <= 44, 'Marca não deve ocupar o mapa durante a navegação'
+            assert banner['height'] <= 105, 'Instrução precisa ser legível sem criar uma faixa enorme'
+            assert dashboard['height'] <= 365, 'Detalhes não devem cobrir a maior parte do mapa'
+            assert toggle['y'] >= dashboard['y'], 'Controle Mapa deve ficar dentro do painel e não sobre a estrada'
+            assert banner['y']+banner['height']+180 < dashboard['y'], 'Mapa deve ter área útil generosa entre os painéis'
             action=page.locator('#navigationStopBtn').bounding_box()
             assert action['height']>=48, 'O controle crítico deve ter alvo de toque adequado'
             assert page.locator('#tripSpeed').inner_text() == '43'
