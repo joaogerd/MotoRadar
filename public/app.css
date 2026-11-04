@@ -75,3 +75,7 @@ body:has(.navigation-panel:not([hidden])) .navigation-heading p{font-size:17px;l
 .support-result{padding:11px 0;border-bottom:1px solid #e1ebf0;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .support-result strong{font-size:13px}.support-result small{font-size:11px;color:#6b7c8e;display:block;margin-top:3px}
 .support-result button{padding:10px;border:0;border-radius:10px;background:#e7f3ff;color:#17629c;white-space:nowrap}
+
+#perspectiveMap{position:fixed;inset:0;z-index:10;background:#dde8df}#perspectiveMap[hidden]{display:none}
+.trip-actions #navigation3dBtn{font-size:14px;font-weight:800}
+.trip-actions #navigation3dBtn[aria-pressed="true"]{background:#d3eafc;color:#075f9d}

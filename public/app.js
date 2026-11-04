@@ -37,6 +37,7 @@
   let toastTimeout;
   let historyRecorder=null;
   let stopsClient=null;
+  let perspective=null,perspectiveEnginePromise=null;
   const weatherMonitor={scanning:false,lastScanAt:0,lastVoiceAt:0,optedIn:false,lastMessage:''};
   const pointLabel = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
@@ -158,7 +159,7 @@
   }
   function removeRouteLayers(){if(!state.routeLayer)return;for(const l of state.routeLayer.layers||[state.routeLayer])state.map.removeLayer(l);state.routeLayer=null;}
   function showRoute(route){
-    removeRouteLayers();state.routeData=route;
+    removeRouteLayers();state.routeData=route;perspective?.setRoute(route.geometry);
     const base=L.geoJSON(route.geometry,{style:{color:'#ffffff',weight:10,opacity:.95}}).addTo(state.map);
     const front=L.geoJSON(route.geometry,{style:{color:'#1479db',weight:6,opacity:.95}}).addTo(state.map);
     state.routeLayer={getBounds:()=>base.getBounds(),layers:[base,front]};
@@ -321,6 +322,32 @@
     if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
     // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
   }
+  async function loadMapLibre(){
+    if(window.maplibregl?.Map)return window.maplibregl;
+    if(perspectiveEnginePromise)return perspectiveEnginePromise;
+    perspectiveEnginePromise=new Promise((resolve,reject)=>{
+      const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css';document.head.appendChild(css);
+      const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.js';s.onload=()=>window.maplibregl?.Map?resolve(window.maplibregl):reject(Error('MapLibre não carregou'));s.onerror=()=>reject(Error('Biblioteca 3D indisponível'));document.head.appendChild(s);
+    });return perspectiveEnginePromise;
+  }
+  function disablePerspective(){
+    if(perspective){try{perspective.destroy();}catch(_){}}perspective=null;$('perspectiveMap').hidden=true;
+    $('navigation3dBtn').setAttribute('aria-pressed','false');
+    if(state.nav.active&&state.gpsPoint&&state.follow)followNavigationCamera(state.gpsPoint);
+  }
+  async function togglePerspective(){
+    if(perspective){disablePerspective();return;}
+    if(!state.nav.active||!state.gpsPoint||!state.routeData?.geometry){toast('Inicie a navegação para visualizar a rota em 3D.');return;}
+    $('navigation3dBtn').disabled=true;
+    try{const engine=await loadMapLibre();if(!state.nav.active)return;
+      const container=$('perspectiveMap');container.hidden=false;
+      perspective=window.MotoPerspective.createView(engine,container,state.routeData.geometry,state.gpsPoint,()=>setFollow(false));
+      $('navigation3dBtn').setAttribute('aria-pressed','true');setFollow(true);
+      const frame=state.frames[state.frameIndex];if(frame)perspective.setRadar(state.radarVisible?`${state.radarHost}${frame.path}/512/{z}/{x}/{y}/2/1_1.png`:'',state.opacity);
+      perspective.update(state.gpsPoint,state.nav.cameraHeading||0);
+    }catch(e){disablePerspective();toast('Perspectiva 3D indisponível neste navegador. O mapa 2D continua funcionando.');console.warn(e);}
+    finally{$('navigation3dBtn').disabled=false;}
+  }
   function openSupport(){ $('supportPanel').hidden=false;$('supportResults').textContent='Selecione a categoria e pesquise. Não há consulta automática.'; }
   async function searchSupport(){
     const origin=state.gpsPoint||state.origin.point;
@@ -369,7 +396,7 @@
     $('historyPanel').hidden=false;
   }
   function stopNavigation(cancelSpeech=true){
-    finishRecording();
+    disablePerspective();finishRecording();
     const nav=state.nav;
     nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
@@ -433,6 +460,7 @@
   function displayRadarFrame(i){if(!state.frames.length)return;state.frameIndex=Math.max(0,Math.min(i,state.frames.length-1));if(state.radarLayer)state.map.removeLayer(state.radarLayer);
     state.radarLayer=L.tileLayer(radarTileUrl(state.frames[state.frameIndex]),{tileSize:256,opacity:state.opacity,maxNativeZoom:7,maxZoom:18,attribution:'Radar: <a href="https://www.rainviewer.com/">RainViewer</a>',updateWhenIdle:true});
     if(state.radarVisible)state.radarLayer.addTo(state.map);refreshRadarBadge();
+    if(perspective){const t=state.frames[state.frameIndex];perspective.setRadar(state.radarVisible?`${state.radarHost}${t.path}/512/{z}/{x}/{y}/2/1_1.png`:'',state.opacity);}
   }
   async function updateRadar(){try{const ctl=new AbortController();const timeout=setTimeout(()=>ctl.abort(),13000);let resp;try{resp=await fetch(API,{signal:ctl.signal,cache:'no-store'});}finally{clearTimeout(timeout);}if(!resp.ok)throw Error(resp.status);
     const obj=await resp.json();if(!obj.host||!obj.radar?.past?.length)throw Error('Sem mosaicos');
@@ -507,7 +535,8 @@
     const icon=L.divIcon({className:'',iconSize:[19,19],iconAnchor:[9,9],html:'<div class="gps-pin"></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
-    if(state.nav.active)followNavigationCamera(shown,pos);
+    if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0);}
+    else if(state.nav.active)followNavigationCamera(shown,pos);
     else if(state.follow)state.map.setView(p,Math.max(11,state.map.getZoom()),{animate:true});
     if(state.origin.gps){state.origin.point=p;state.origin.label='Sua localização atual';$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');
       if(!state.nav.active&&!state.nav.waiting&&state.routeLayer&&(!state.lastRoutePoint||p.distanceTo(state.lastRoutePoint)>3000)){state.lastRoutePoint=p;removeRouteLayers();drawRoute();}
@@ -528,7 +557,8 @@
     state.mapReady=true;state.map.on('click',e=>{if(state.pickTarget){setPoint(state.pickTarget,e.latlng);stopPick();setMinimized(false);}});
     state.map.on('dragstart',()=>{setFollow(false);});renderPins();
   }
-  function initEvents(){ $('supportBtn').onclick=openSupport;$('supportCloseBtn').onclick=()=>$('supportPanel').hidden=true;$('supportSearchBtn').onclick=searchSupport;
+  function initEvents(){ $('navigation3dBtn').onclick=togglePerspective;
+    $('supportBtn').onclick=openSupport;$('supportCloseBtn').onclick=()=>$('supportPanel').hidden=true;$('supportSearchBtn').onclick=searchSupport;
     $('tripRecordBtn').onclick=toggleRecording;$('tripHistoryBtn').onclick=openHistory;$('historyCloseBtn').onclick=()=>$('historyPanel').hidden=true;
     $('settingsBtn').onclick=openSettings;$('radarQuickBtn').onclick=openSettings;$('settingsClose').onclick=closeSettings;
     $('settingsPanel').addEventListener('click',e=>{if(e.target===$('settingsPanel'))closeSettings();});
@@ -547,7 +577,7 @@
     $('tripSettingsBtn').onclick=openSettings;
     $('navigationFullscreenBtn').onclick=toggleFullscreen;$('fullscreenFloatingBtn').onclick=toggleFullscreen;
     document.addEventListener('fullscreenchange',()=>{if(!isFullscreen())state.nav.fullscreenOwned=false;refreshFullscreenButtons();});
-    $('navigationCenterBtn').onclick=()=>{setFollow(true);if(state.gpsPoint && state.nav.active)followNavigationCamera(state.gpsPoint);else if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
+    $('navigationCenterBtn').onclick=()=>{setFollow(true);if(state.gpsPoint && perspective)perspective.update(state.gpsPoint,state.nav.cameraHeading||0);else if(state.gpsPoint && state.nav.active)followNavigationCamera(state.gpsPoint);else if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
     $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;$('navigationVoiceBtn').textContent=state.nav.muted?'🔇':'🔊';$('navigationVoiceBtn').setAttribute('aria-pressed',String(!state.nav.muted));if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && (state.nav.active||state.nav.waiting))keepAwake();});
     document.querySelectorAll('.map-pick[data-pick]').forEach(btn=>btn.onclick=()=>setPick(btn.dataset.pick));$('cancelPickBtn').onclick=()=>{stopPick();setMinimized(false);};
