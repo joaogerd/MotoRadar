@@ -25,7 +25,7 @@ def test_original_brand_and_bold_turn_maneuver_symbols():
 def test_dashboard_has_two_by_two_readable_metrics():
     html = (ROOT / "index.html").read_text()
     css = (ROOT / "app.css").read_text()
-    assert len(re.findall(r'class="[^"]*\\btrip-metric\\b', html)) == 4
+    assert html.count(' trip-metric"') == 4
     assert 'class="metric-value"' in html
     assert 'mr-speed-solid' in html
     assert 'mr-route-solid' in html
