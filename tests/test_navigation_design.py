@@ -25,7 +25,7 @@ def test_original_brand_and_bold_turn_maneuver_symbols():
 def test_dashboard_has_two_by_two_readable_metrics():
     html = (ROOT / "index.html").read_text()
     css = (ROOT / "app.css").read_text()
-    assert 'class="trip-metric"' in html
+    assert len(re.findall(r'class="[^"]*\\btrip-metric\\b', html)) == 4
     assert 'class="metric-value"' in html
     assert 'mr-speed-solid' in html
     assert 'mr-route-solid' in html
@@ -58,3 +58,11 @@ def test_release_cache_bumped_consistently():
     assert 'app.css?v=13' in html
     assert 'app.js?v=13' in html
     assert 'motoradar-shell-v14' in (ROOT / "sw.js").read_text()
+
+
+def test_record_button_preserves_visual_identity_when_toggled():
+    js=(ROOT / "app.js").read_text()
+    assert "function setRecordingButton(" in js
+    assert "setRecordingButton(true)" in js
+    assert "setRecordingButton(false)" in js
+    assert "tripRecordBtn').textContent" not in js

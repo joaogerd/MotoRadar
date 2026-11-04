@@ -368,10 +368,16 @@
     }catch(err){root.textContent=String(err?.message||'Serviço indisponível. Tente novamente mais tarde.');}
     finally{$('supportSearchBtn').disabled=false;}
   }
+  function setRecordingButton(recording) {
+    const button=$('tripRecordBtn');
+    if(!button)return;
+    button.innerHTML=svgIcon('record-solid','icon-md')+'<span class="action-label">Gravar</span>';
+    button.setAttribute('aria-pressed',String(!!recording));
+    button.setAttribute('aria-label',recording?'Parar gravação do trajeto':'Iniciar gravação de trajeto');
+  }
   function finishRecording(){
     if(historyRecorder?.isRecording()) {
-      const done=historyRecorder.stop();$('tripRecordBtn').setAttribute('aria-pressed','false');
-      $('tripRecordBtn').textContent='●';
+      const done=historyRecorder.stop();setRecordingButton(false);
       if(done?.points.length)toast('Trajeto salvo somente neste aparelho. Abra Histórico para exportar GPX.');
     }
   }
@@ -380,8 +386,8 @@
     if(historyRecorder.isRecording()){finishRecording();return;}
     if(!state.nav.active){toast('Inicie o Modo Viagem antes de gravar o percurso.');return;}
     const label=state.destination.label||'Viagem de moto';
-    historyRecorder.start(label);$('tripRecordBtn').setAttribute('aria-pressed','true');
-    $('tripRecordBtn').textContent='■';toast('Gravação iniciada voluntariamente. Os dados ficam neste aparelho.');
+    historyRecorder.start(label);setRecordingButton(true);
+    toast('Gravação iniciada voluntariamente. Os dados ficam neste aparelho.');
   }
   function openHistory(){
     const root=$('tripHistoryList');root.replaceChildren();
@@ -650,7 +656,7 @@
     try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
     try{weatherMonitor.optedIn=localStorage.getItem('motoradar-weather-optin-v1')==='true';}catch(_){}
     $('radarAlertOptIn').checked=weatherMonitor.optedIn;
-    restore();initMap();renderStops();setVoiceButton();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
+    restore();initMap();renderStops();setVoiceButton();setRecordingButton(false);$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
       {$('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';$('tripSpeed').textContent='—';$('tripArrival').textContent='—';}},8000);

@@ -30,7 +30,7 @@ def test_svg_icons_reference_local_sprite_without_new_cdn():
 
 def test_navigation_dynamic_arrows_voice_and_stop_controls_are_svg():
     code = (ROOT / 'public/app.js').read_text()
-    assert 'navIconName' in code and "'↱':'turn-right'" in code
+    assert 'navIconName' in code and "'↱':'turn-right-solid'" in code
     assert "$('navigationArrow').innerHTML=svgIcon(" in code
     assert 'setVoiceButton()' in code
     assert 'navigationVoiceBtn' in code
