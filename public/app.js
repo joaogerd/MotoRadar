@@ -317,6 +317,7 @@
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
     nav.waiting=true;nav.building=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
+    setTripPanelCompact(false,false);
     $('tripSpeed').textContent='—';$('tripDistance').textContent='—';$('tripArrival').textContent='—';$('tripDuration').textContent='—';
     navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
     $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
@@ -347,7 +348,7 @@
       perspective=window.MotoPerspective.createView(engine,container,state.routeData.geometry,state.gpsPoint,()=>setFollow(false));
       $('navigation3dBtn').setAttribute('aria-pressed','true');setFollow(true);
       const frame=state.frames[state.frameIndex];if(frame)perspective.setRadar(state.radarVisible?`${state.radarHost}${frame.path}/512/{z}/{x}/{y}/2/1_1.png`:'',state.opacity);
-      perspective.update(state.gpsPoint,state.nav.cameraHeading||0);
+      perspective.update(state.gpsPoint,state.nav.cameraHeading||0,visibleNavigationFocusY());
     }catch(e){disablePerspective();toast('Perspectiva 3D indisponível neste navegador. O mapa 2D continua funcionando.');console.warn(e);}
     finally{$('navigation3dBtn').disabled=false;}
   }
@@ -403,6 +404,7 @@
     const nav=state.nav;
     nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
+    setTripPanelCompact(false,false);
     if(nav.fullscreenOwned)exitFullscreen();nav.fullscreenOwned=false;
     if(nav.previewRoute)showRoute(nav.previewRoute);
     nav.previewRoute=null;
@@ -493,6 +495,35 @@
   }
   function toggleRadar(on){state.radarVisible=on;$('radarVisibleBtn').textContent=on?'Ligado':'Desligado';$('radarVisibleBtn').classList.toggle('on',on);$('radarVisibleBtn').setAttribute('aria-pressed',String(on));if(state.radarLayer){if(on)state.radarLayer.addTo(state.map);else state.map.removeLayer(state.radarLayer);}}
   function toggleCoverage(on){state.coverage=on;$('radarCoverageBtn').textContent=on?'Ligada':'Desligada';$('radarCoverageBtn').classList.toggle('on',on);$('radarCoverageBtn').setAttribute('aria-pressed',String(on));if(state.coverageLayer){state.map.removeLayer(state.coverageLayer);state.coverageLayer=null;}if(on){const host=state.radarHost||'https://tilecache.rainviewer.com';state.coverageLayer=L.tileLayer(host+'/v2/coverage/0/512/{z}/{x}/{y}/0/0_0.png',{tileSize:256,opacity:.32,maxNativeZoom:7,maxZoom:18,attribution:'Cobertura: RainViewer'}).addTo(state.map);}}
+  function visibleNavigationFocusY(){
+    const mapRect=$('map')?.getBoundingClientRect?.();
+    const top=$('navigationPanel')?.getBoundingClientRect?.();
+    const bottom=$('tripDashboard')?.getBoundingClientRect?.();
+    const size=state.map?.getSize?.();
+    if(!mapRect||!size||!top||!bottom||$('navigationPanel').hidden||$('tripDashboard').hidden)return null;
+    return MotoNavigation.visibleFocusY(size.y,top.bottom-mapRect.top,bottom.top-mapRect.top);
+  }
+  function refreshNavigationCamera(){
+    if(!state.nav.active||!state.gpsPoint||!state.follow)return;
+    if(perspective)perspective.update(state.gpsPoint,state.nav.cameraHeading??0,visibleNavigationFocusY());
+    else followNavigationCamera(state.gpsPoint,state.nav.latestPosition);
+  }
+  function setTripPanelCompact(compact,updateCamera=true){
+    const panel=$('tripDashboard');
+    panel.classList.toggle('compact',!!compact);
+    const toggle=$('tripPanelToggleBtn');
+    toggle?.setAttribute('aria-expanded',String(!compact));
+    toggle?.setAttribute('aria-label',compact?'Expandir detalhes da viagem':'Recolher painel para ver o mapa');
+    const label=$('tripPanelToggleLabel');if(label)label.textContent=compact?'Detalhes':'Mapa';
+    $('tripPanelToggleIcon')?.setAttribute('href',compact?'#mr-chevron-up':'#mr-chevron-down');
+    $('tripCompactCenterBtn').hidden=!compact;
+    if(updateCamera)refreshNavigationCamera();
+  }
+  function recenterNavigation(){
+    setTripPanelCompact(true,false);
+    setFollow(true);
+    refreshNavigationCamera();
+  }
   function setFollow(on) {
     state.follow=on;
     const btn=$('navigationCenterBtn');
@@ -526,8 +557,10 @@
     let target=point;
     if(typeof map.project==='function' && typeof map.unproject==='function' && typeof map.getSize==='function') {
       const size=map.getSize();
-      // Posição na parte inferior da área útil, deixando espaço para antecipar as conversões.
-      const forward=Math.min(150,Math.max(45,size.y*.15));
+      // Reservar o espaço realmente visível entre os painéis em qualquer orientação/tela.
+      // Sem isso, centralizar a posição deixa a moto atrás do painel inferior.
+      const desiredY=visibleNavigationFocusY();
+      const forward=Number.isFinite(desiredY)?desiredY-size.y/2:Math.min(150,Math.max(45,size.y*.15));
       const rad=hasRotation ? nav.cameraHeading*Math.PI/180 : 0;
       const worldPoint=map.project(point,zoom);
       target=map.unproject(L.point(worldPoint.x+Math.sin(rad)*forward,worldPoint.y-Math.cos(rad)*forward),zoom);
@@ -553,7 +586,7 @@
     const icon=L.divIcon({className:'',iconSize:[40,44],iconAnchor:[20,22],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-vehicle-arrow" viewBox="0 0 40 44"><path d="M20 2 37 40 20 32 3 40Z"/></svg></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
-    if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0);}
+    if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0,visibleNavigationFocusY());}
     else if(state.nav.active)followNavigationCamera(shown,pos);
     else if(state.follow)state.map.setView(p,Math.max(11,state.map.getZoom()),{animate:true});
     if(state.origin.gps){state.origin.point=p;state.origin.label='Sua localização atual';$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');
@@ -595,9 +628,12 @@
     $('tripSettingsBtn').onclick=openSettings;
     $('navigationFullscreenBtn').onclick=toggleFullscreen;$('fullscreenFloatingBtn').onclick=toggleFullscreen;
     document.addEventListener('fullscreenchange',()=>{if(!isFullscreen())state.nav.fullscreenOwned=false;refreshFullscreenButtons();});
-    $('navigationCenterBtn').onclick=()=>{setFollow(true);if(state.gpsPoint && perspective)perspective.update(state.gpsPoint,state.nav.cameraHeading||0);else if(state.gpsPoint && state.nav.active)followNavigationCamera(state.gpsPoint);else if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
+    $('navigationCenterBtn').onclick=recenterNavigation;
+    $('tripCompactCenterBtn').onclick=recenterNavigation;
+    $('tripPanelToggleBtn').onclick=()=>setTripPanelCompact(!$('tripDashboard').classList.contains('compact'));
     $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;setVoiceButton();if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && (state.nav.active||state.nav.waiting))keepAwake();});
+    window.addEventListener('resize',()=>{if(state.nav.active&&state.follow)requestAnimationFrame(refreshNavigationCamera);});
     document.querySelectorAll('.map-pick[data-pick]').forEach(btn=>btn.onclick=()=>setPick(btn.dataset.pick));$('cancelPickBtn').onclick=()=>{stopPick();setMinimized(false);};
     $('radarVisibleBtn').onclick=()=>toggleRadar(!state.radarVisible);
     $('radarCoverageBtn').onclick=()=>toggleCoverage(!state.coverage);
