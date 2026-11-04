@@ -106,3 +106,6 @@ O botão **Pontos de apoio** pesquisa até 20 estabelecimentos do cadastro comun
 
 ### Análise indicativa de ecos no corredor (experimental)
 Nas configurações do radar, **Examinar até 30 km** amostra pixels transparentes/coloridos do último mosaico RainViewer em pontos da rota a cada 2 km, no máximo 12 tiles. O produto é histórico, não quantitativo, limitado a zoom 7 e não usa previsão. Se um pixel colorido é encontrado, informa o primeiro eco amostrado e a idade do mosaico. Se não encontra eco, **não afirma ausência de precipitação nem cobertura**. Falha de acesso CORS ou de fonte aparece explicitamente como indisponível. Avisos por voz só ocorrem mediante opt-in, com limitação temporal; nunca substituem prudência do condutor nem o monitoramento meteorológico operacional. Validação com pixels reais em diferentes redes ainda pendente.
+
+### Perspectiva 3D opcional (experimental)
+Durante a navegação, o botão **3D** carrega MapLibre GL JS sob demanda e desenha a mesma rota com inclinação de câmera, marcador GPS e mosaico histórico RainViewer em camada raster. Se o navegador não oferecer WebGL ou a biblioteca CDN estiver indisponível, o MotoRadar preserva o mapa 2D Leaflet. A perspectiva não representa relevo 3D com DEM; é inclinação de mapa plano. O tempo de carregamento, consumo de dados e funcionamento em Android ainda exigem validação.

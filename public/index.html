@@ -21,10 +21,12 @@
 <script defer src="offline-route.js?v=9"></script>
 <script defer src="smart-stops.js?v=9"></script>
 <script defer src="weather-corridor.js?v=9"></script>
+<script defer src="perspective-map.js?v=9"></script>
 <script defer src="app.js?v=8"></script>
 </head>
 <body>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
+<div id="perspectiveMap" aria-label="Mapa em perspectiva 3D" hidden></div>
 <header class="topbar">
  <div class="app-name"><span class="logo-mark">⛅</span><span><strong>MotoRadar</strong><small>Rota e chuva no mesmo mapa</small></span></div>
  <button id="settingsBtn" class="round-btn" type="button" title="Configurações de radar" aria-label="Configurações do radar">⚙</button>
@@ -84,6 +86,7 @@
      <span class="trip-nav-remaining" id="navigationRemaining" aria-label="Distância restante" hidden>—</span><span id="navigationEta" hidden>—</span>
    </div>
    <div class="navigation-actions trip-actions">
+     <button id="navigation3dBtn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D">3D</button>
      <button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia">⛶</button>
      <button id="navigationCenterBtn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar">◎</button>
      <button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz">🔊</button>
