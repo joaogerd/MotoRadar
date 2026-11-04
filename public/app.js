@@ -46,7 +46,18 @@
   const svgIcon = (name, cls='') => `<svg class=\"icon ${cls}\" aria-hidden=\"true\"><use href=\"#mr-${name}\"></use></svg>`;
   const navIconName = (symbol) => ({'⚑':'flag-solid','⟳':'turn-roundabout-solid','↶':'turn-uturn-solid','↱':'turn-right-solid','↰':'turn-left-solid','↑':'turn-straight-solid','◎':'target-solid'}[symbol] || 'turn-straight-solid');
   function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-muted-solid':'voice-solid','icon-md')+'<span class="action-label">Voz</span>'; btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
-  function toast(message) { const el=$('toast'); el.textContent=message; el.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('show'),4800); }
+  function toast(message) {
+    const duringNavigation=(state.nav.active||state.nav.waiting)&&!$('tripDashboard').hidden;
+    const el=duringNavigation?$('tripNotice'):$('toast');
+    const other=duringNavigation?$('toast'):$('tripNotice');
+    other?.classList.remove('show');
+    if(other?.id==='tripNotice')other.hidden=true;
+    clearTimeout(toastTimeout);
+    el.textContent=message;
+    if(duringNavigation)el.hidden=false;
+    else el.classList.add('show');
+    toastTimeout=setTimeout(()=>{el.classList.remove('show');if(el.id==='tripNotice')el.hidden=true;},4700);
+  }
   function persist() {
     try {
       localStorage.setItem(key,JSON.stringify({
@@ -326,13 +337,35 @@
     if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
     // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
   }
+  // MapLibre v6 usa módulos ES, não possui o bundle global maplibre-gl.js da v5.
+  // Evita download/instalação até o usuário pedir a perspectiva 3D.
   async function loadMapLibre(){
     if(window.maplibregl?.Map)return window.maplibregl;
     if(perspectiveEnginePromise)return perspectiveEnginePromise;
-    perspectiveEnginePromise=new Promise((resolve,reject)=>{
-      const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css';document.head.appendChild(css);
-      const s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.js';s.onload=()=>window.maplibregl?.Map?resolve(window.maplibregl):reject(Error('MapLibre não carregou'));s.onerror=()=>reject(Error('Biblioteca 3D indisponível'));document.head.appendChild(s);
-    });return perspectiveEnginePromise;
+    perspectiveEnginePromise=(async()=>{
+      const sources=[
+        'https://unpkg.com/maplibre-gl@6.16.0/dist',
+        'https://cdn.jsdelivr.net/npm/maplibre-gl@6.16.0/dist'
+      ];
+      let lastError;
+      for(const base of sources){
+        try {
+          const engine=await import(base+'/maplibre-gl.mjs');
+          if(typeof engine?.Map!=='function')throw Error('Módulo MapLibre inválido');
+          if(!document.querySelector('link[data-motoradar-maplibre]')){
+            const css=document.createElement('link');
+            css.rel='stylesheet';css.href=base+'/maplibre-gl.css';
+            css.dataset.motoradarMaplibre='true';
+            document.head.appendChild(css);
+          }
+          return engine;
+        } catch(error) {lastError=error;console.warn('Falha ao carregar MapLibre de '+base,error);}
+      }
+      const error=new Error('MAPLIBRE_DOWNLOAD_FAILED');
+      error.cause=lastError;
+      throw error;
+    })().catch(error=>{perspectiveEnginePromise=null;throw error;});
+    return perspectiveEnginePromise;
   }
   function disablePerspective(){
     if(perspective){try{perspective.destroy();}catch(_){}}perspective=null;$('perspectiveMap').hidden=true;
@@ -349,7 +382,12 @@
       $('navigation3dBtn').setAttribute('aria-pressed','true');setFollow(true);
       const frame=state.frames[state.frameIndex];if(frame)perspective.setRadar(state.radarVisible?`${state.radarHost}${frame.path}/512/{z}/{x}/{y}/2/1_1.png`:'',state.opacity);
       perspective.update(state.gpsPoint,state.nav.cameraHeading||0,visibleNavigationFocusY());
-    }catch(e){disablePerspective();toast('Perspectiva 3D indisponível neste navegador. O mapa 2D continua funcionando.');console.warn(e);}
+    }catch(e){
+      disablePerspective();
+      const loadFailure=e?.message==='MAPLIBRE_DOWNLOAD_FAILED';
+      toast(loadFailure?'3D não carregou. Confira a conexão; mapa 2D mantido.':'3D indisponível neste dispositivo. Navegação 2D mantida.');
+      console.warn('Modo 3D indisponível',e);
+    }
     finally{$('navigation3dBtn').disabled=false;}
   }
   function openSupport(){ $('supportPanel').hidden=false;$('supportResults').textContent='Selecione a categoria e pesquise. Não há consulta automática.'; }
@@ -410,6 +448,7 @@
     const nav=state.nav;
     nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
+    $('tripNotice').hidden=true;clearTimeout(toastTimeout);
     setTripPanelCompact(false,false);
     if(nav.fullscreenOwned)exitFullscreen();nav.fullscreenOwned=false;
     if(nav.previewRoute)showRoute(nav.previewRoute);

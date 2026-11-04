@@ -13,17 +13,17 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=14">
+<link rel="stylesheet" href="app.css?v=15">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script defer src="navigation.js?v=14"></script>
-<script defer src="trip-history.js?v=14"></script>
-<script defer src="offline-route.js?v=14"></script>
-<script defer src="smart-stops.js?v=14"></script>
-<script defer src="weather-corridor.js?v=14"></script>
-<script defer src="echo-motion.js?v=14"></script>
-<script defer src="perspective-map.js?v=14"></script>
-<script defer src="app.js?v=14"></script>
+<script defer src="navigation.js?v=15"></script>
+<script defer src="trip-history.js?v=15"></script>
+<script defer src="offline-route.js?v=15"></script>
+<script defer src="smart-stops.js?v=15"></script>
+<script defer src="weather-corridor.js?v=15"></script>
+<script defer src="echo-motion.js?v=15"></script>
+<script defer src="perspective-map.js?v=15"></script>
+<script defer src="app.js?v=15"></script>
 </head>
 <body>
 <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -152,6 +152,7 @@
        <button id="tripSettingsBtn" class="trip-radar-btn" type="button" aria-label="Configurações meteorológicas" title="Radar e clima"><svg class="icon icon-md"><use href="#mr-radar-solid"></use></svg><span>Radar e clima</span></button>
      </div>
    </div>
+   <div id="tripNotice" class="trip-notice" role="status" aria-live="polite" hidden></div>
    <div id="tripMetrics" class="trip-metrics">
      <div class="trip-speed trip-metric"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-speed-solid"></use></svg><small>Velocidade GPS</small><div class="metric-value"><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span></div></div>
      <div class="trip-stat trip-metric"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-route-solid"></use></svg><small>Distância restante</small><strong id="tripDistance">—</strong></div>
