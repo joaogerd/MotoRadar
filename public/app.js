@@ -138,12 +138,20 @@
       const data=response;if(serial!==state.routeRequest)return;
       const route=data.routes?.[0];if(data.code==='NoRoute'||!route?.geometry)throw Error('Sem rota disponível');
       showRoute(route);
+      try{window.MotoOffline?.save(localStorage,pts,route);}catch(_){}
       const km=(route.distance/1000).toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:1});
       const mins=Math.round(route.duration/60),duration=mins>=60?`${Math.floor(mins/60)}h ${mins%60}min`:`${mins} min`;
       $('routeInfo').textContent=`${km} km · ${duration}`;
       $('routeDetail').textContent=`${state.stops.length} parada(s) • OSRM (perfil automóvel)`;
       $('routeSummary').hidden=false;setMinimized(true);renderPins();routeBounds();persist();
-    }catch(err){if(serial!==state.routeRequest)return;console.warn('Erro no roteamento',err);removeOldRoute();toast('Não foi possível calcular o trajeto por rodovias. Confirme os locais e tente novamente.');setMinimized(false);}
+    }catch(err){if(serial!==state.routeRequest)return;console.warn('Erro no roteamento',err);
+      let cached=null;try{cached=window.MotoOffline?.load(localStorage,pts);}catch(_){}
+      if(cached){showRoute(cached);$('routeInfo').textContent=`${(cached.distance/1000).toFixed(1)} km · itinerário salvo`;
+        $('routeDetail').textContent='Rota anterior (até 7 dias) • mapa e navegação precisam de internet';
+        $('routeSummary').hidden=false;setMinimized(true);renderPins();routeBounds();
+        toast('Sem acesso ao roteador. Exibindo rota previamente calculada: confirme se vias e acessos permanecem válidos.');
+      }else{removeOldRoute();toast('Sem acesso ao roteador. Não há rota salva para estes pontos.');setMinimized(false);}
+    }
     finally{if(serial===state.routeRequest){$('drawRouteBtn').disabled=false;$('drawRouteBtn').textContent='Mostrar rota no mapa';}}
   }
   function removeRouteLayers(){if(!state.routeLayer)return;for(const l of state.routeLayer.layers||[state.routeLayer])state.map.removeLayer(l);state.routeLayer=null;}

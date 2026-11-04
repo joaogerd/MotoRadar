@@ -97,3 +97,6 @@ A navegação é experimental e não substitui um app homologado. Nunca manipule
 
 ### Orientação por voz em desenvolvimento
 O módulo de navegação usa, quando fornecidos pelo OSRM, os nomes/referências de rodovias, destinos das rampas e o número ordinal da saída da rotatória. Avisos são antecipados em até 1,2 km, 600 m e 75 m, sem afirmar informações de trânsito em tempo real.
+
+### Rota salva (sem pré-download de mapas)
+O MotoRadar guarda uma **cópia local do último itinerário calculado** por até sete dias e pode redesenhá-lo se o roteador falhar, desde que origem, destino e paradas sejam os mesmos. Isso não constitui navegação offline: a base cartográfica depende de tiles externos e é proibido baixar antecipadamente tiles do servidor público OpenStreetMap. A PWA preserva apenas seus próprios arquivos no cache.
