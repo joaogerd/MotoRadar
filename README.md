@@ -100,3 +100,6 @@ O módulo de navegação usa, quando fornecidos pelo OSRM, os nomes/referências
 
 ### Rota salva (sem pré-download de mapas)
 O MotoRadar guarda uma **cópia local do último itinerário calculado** por até sete dias e pode redesenhá-lo se o roteador falhar, desde que origem, destino e paradas sejam os mesmos. Isso não constitui navegação offline: a base cartográfica depende de tiles externos e é proibido baixar antecipadamente tiles do servidor público OpenStreetMap. A PWA preserva apenas seus próprios arquivos no cache.
+
+### Consulta manual de pontos de apoio
+O botão **Pontos de apoio** pesquisa até 20 estabelecimentos do cadastro comunitário OpenStreetMap, num raio de 3 km da localização GPS ou da saída escolhida. A busca usa a API Overpass mediante **toque explícito**, com intervalo de pelo menos 60 segundos por aparelho. Resultados não são verificados como abertos ou seguros e não são inseridos automaticamente na rota. Servidores Overpass públicos têm limites de uso e podem falhar.

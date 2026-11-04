@@ -36,6 +36,7 @@
   };
   let toastTimeout;
   let historyRecorder=null;
+  let stopsClient=null;
   const pointLabel = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
   const unit = (p) => p ? `${p.lat},${p.lng}` : '';
@@ -319,6 +320,22 @@
     if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
     // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
   }
+  function openSupport(){ $('supportPanel').hidden=false;$('supportResults').textContent='Selecione a categoria e pesquise. Não há consulta automática.'; }
+  async function searchSupport(){
+    const origin=state.gpsPoint||state.origin.point;
+    if(!origin){$('supportResults').textContent='Autorize o GPS ou defina a saída antes de pesquisar serviços.';return;}
+    if(!stopsClient){$('supportResults').textContent='Serviço de apoio indisponível.';return;}
+    const root=$('supportResults');root.textContent='Consultando cadastro colaborativo…';$('supportSearchBtn').disabled=true;
+    try{const places=await stopsClient.search(origin,$('supportType').value,3000);root.replaceChildren();
+      if(!places.length)root.textContent='Nenhum ponto cadastrado encontrado. Isso não prova ausência de serviços próximos.';
+      for(const place of places){const item=document.createElement('div');item.className='support-result';item.setAttribute('role','listitem');
+        const label=document.createElement('div');const title=document.createElement('strong');title.textContent=place.name;const detail=document.createElement('small');detail.textContent=`${(place.distanceMeters/1000).toFixed(1)} km em linha reta • ${place.kind}`;label.append(title,detail);
+        const btn=document.createElement('button');btn.type='button';btn.textContent='Mapa';btn.onclick=()=>window.open(`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`,'_blank','noopener');
+        item.append(label,btn);root.appendChild(item);
+      }
+    }catch(err){root.textContent=String(err?.message||'Serviço indisponível. Tente novamente mais tarde.');}
+    finally{$('supportSearchBtn').disabled=false;}
+  }
   function finishRecording(){
     if(historyRecorder?.isRecording()) {
       const done=historyRecorder.stop();$('tripRecordBtn').setAttribute('aria-pressed','false');
@@ -481,7 +498,8 @@
     state.mapReady=true;state.map.on('click',e=>{if(state.pickTarget){setPoint(state.pickTarget,e.latlng);stopPick();setMinimized(false);}});
     state.map.on('dragstart',()=>{setFollow(false);});renderPins();
   }
-  function initEvents(){ $('tripRecordBtn').onclick=toggleRecording;$('tripHistoryBtn').onclick=openHistory;$('historyCloseBtn').onclick=()=>$('historyPanel').hidden=true;
+  function initEvents(){ $('supportBtn').onclick=openSupport;$('supportCloseBtn').onclick=()=>$('supportPanel').hidden=true;$('supportSearchBtn').onclick=searchSupport;
+    $('tripRecordBtn').onclick=toggleRecording;$('tripHistoryBtn').onclick=openHistory;$('historyCloseBtn').onclick=()=>$('historyPanel').hidden=true;
     $('settingsBtn').onclick=openSettings;$('radarQuickBtn').onclick=openSettings;$('settingsClose').onclick=closeSettings;
     $('settingsPanel').addEventListener('click',e=>{if(e.target===$('settingsPanel'))closeSettings();});
     $('routeToggle').onclick=()=>setMinimized(!$('routePanel').classList.contains('minimized'));
@@ -512,6 +530,7 @@
     $('radarPlayBtn').onclick=toggleRadarAnimation;$('radarRefreshBtn').onclick=updateRadar;
   }
   function init(){if(typeof L==='undefined'){toast('O mapa não carregou. Confira sua conexão.');return;}
+    try{stopsClient=window.MotoStops?.createClient();}catch(e){console.warn('Pontos de apoio indisponíveis',e);}
     try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
     restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
