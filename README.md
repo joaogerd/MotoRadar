@@ -94,3 +94,6 @@ A navegação é experimental e não substitui um app homologado. Nunca manipule
 
 - **Map matching visual**: aproxima o marcador à rota somente com GPS preciso e rumo coerente; o dado observado permanece intacto para calcular desvios.
 - **Histórico GPX opcional**: durante uma navegação, use o botão ● para começar/parar a gravação. A posição fica apenas no armazenamento local deste navegador (até 12 viagens e 4.500 amostras por viagem), pode ser exportada em GPX e excluída individualmente. Uma sessão interrompida não reinicia automaticamente. Não grave trajetos de outras pessoas sem consentimento. Não há sincronização com nuvem.
+
+### Orientação por voz em desenvolvimento
+O módulo de navegação usa, quando fornecidos pelo OSRM, os nomes/referências de rodovias, destinos das rampas e o número ordinal da saída da rotatória. Avisos são antecipados em até 1,2 km, 600 m e 75 m, sem afirmar informações de trânsito em tempo real.
