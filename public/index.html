@@ -17,6 +17,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
 <script defer src="navigation.js?v=8"></script>
+<script defer src="trip-history.js?v=9"></script>
 <script defer src="app.js?v=8"></script>
 </head>
 <body>
@@ -42,6 +43,7 @@
    </div>
    <div id="placeResults" class="place-results" role="region" aria-live="polite" aria-label="Locais encontrados" hidden></div>
    <div class="route-tools"><button id="addStopBtn" class="text-btn" type="button">＋ Adicionar parada</button><button id="clearBtn" class="text-btn neutral" type="button">Limpar rota</button></div>
+   <button id="tripHistoryBtn" class="text-btn" type="button">◴ Histórico de viagens</button>
    <button id="brasiliaTourBtn" class="text-btn" type="button">↗ Carregar passeio turístico de Brasília</button>
    <p id="tourStatus" class="tiny-credit" role="status" aria-live="polite" hidden></p>
    <button id="drawRouteBtn" class="draw-btn" type="button">Mostrar rota no mapa</button>
@@ -81,10 +83,18 @@
      <button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia">⛶</button>
      <button id="navigationCenterBtn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar">◎</button>
      <button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz">🔊</button>
+     <button id="tripRecordBtn" type="button" title="Gravar minha viagem neste aparelho" aria-pressed="false" aria-label="Iniciar gravação de trajeto">●</button>
      <button id="navigationStopBtn" type="button">Encerrar viagem</button>
    </div>
  </section>
 </main>
+<div id="historyPanel" class="modal-cover" hidden>
+  <section class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <div class="sheet-head"><div><h2 id="historyTitle">Histórico local de viagens</h2><small>Salvo somente neste aparelho, mediante gravação voluntária.</small></div><button id="historyCloseBtn" class="round-btn" type="button" aria-label="Fechar histórico">✕</button></div>
+    <div id="tripHistoryList" role="list"></div>
+    <p class="warning">As coordenadas podem revelar lugares visitados. Os arquivos GPX são exportados apenas mediante solicitação.</p>
+  </section>
+</div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="settingsPanel" class="modal-cover" hidden>
  <section class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">

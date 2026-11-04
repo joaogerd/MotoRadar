@@ -89,3 +89,8 @@ bloqueada pode perder GPS e instruções por voz.
 Ao navegar, a câmera reposiciona o mapa a cada atualização do GPS, mantendo a moto mais abaixo da área útil, para mostrar mais via à frente. Quando disponível, o mapa gira conforme o rumo real do deslocamento através de uma extensão opcional do Leaflet; se essa extensão falhar, o acompanhamento continua no modo norte-para-cima. Arrastar o mapa pausa o acompanhamento; o botão ◎ o retoma. Um GPS com baixa precisão não desloca a câmera.
 
 A navegação é experimental e não substitui um app homologado. Nunca manipule a tela pilotando.
+
+## Novas funcionalidades em desenvolvimento (branch develop)
+
+- **Map matching visual**: aproxima o marcador à rota somente com GPS preciso e rumo coerente; o dado observado permanece intacto para calcular desvios.
+- **Histórico GPX opcional**: durante uma navegação, use o botão ● para começar/parar a gravação. A posição fica apenas no armazenamento local deste navegador (até 12 viagens e 4.500 amostras por viagem), pode ser exportada em GPX e excluída individualmente. Uma sessão interrompida não reinicia automaticamente. Não grave trajetos de outras pessoas sem consentimento. Não há sincronização com nuvem.

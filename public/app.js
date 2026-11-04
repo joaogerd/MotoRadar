@@ -35,6 +35,7 @@
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
+  let historyRecorder=null;
   const pointLabel = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
   const unit = (p) => p ? `${p.lat},${p.lng}` : '';
@@ -310,7 +311,39 @@
     if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
     // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
   }
+  function finishRecording(){
+    if(historyRecorder?.isRecording()) {
+      const done=historyRecorder.stop();$('tripRecordBtn').setAttribute('aria-pressed','false');
+      $('tripRecordBtn').textContent='●';
+      if(done?.points.length)toast('Trajeto salvo somente neste aparelho. Abra Histórico para exportar GPX.');
+    }
+  }
+  function toggleRecording(){
+    if(!historyRecorder){toast('O armazenamento local não está disponível.');return;}
+    if(historyRecorder.isRecording()){finishRecording();return;}
+    if(!state.nav.active){toast('Inicie o Modo Viagem antes de gravar o percurso.');return;}
+    const label=state.destination.label||'Viagem de moto';
+    historyRecorder.start(label);$('tripRecordBtn').setAttribute('aria-pressed','true');
+    $('tripRecordBtn').textContent='■';toast('Gravação iniciada voluntariamente. Os dados ficam neste aparelho.');
+  }
+  function openHistory(){
+    const root=$('tripHistoryList');root.replaceChildren();
+    const trips=historyRecorder?.list()||[];
+    if(!trips.length){const line=document.createElement('p');line.textContent='Nenhuma viagem gravada neste aparelho.';root.appendChild(line);}
+    for(const trip of trips){
+      const row=document.createElement('div');row.className='trip-history-row';row.setAttribute('role','listitem');
+      const title=document.createElement('strong');title.textContent=trip.name||'Viagem';row.appendChild(title);
+      const details=document.createElement('small');details.textContent=`${new Date(trip.startedAt).toLocaleString('pt-BR')} • ${(trip.distanceMeters/1000).toFixed(1)} km • ${trip.points.length} posições`;row.appendChild(details);
+      const actions=document.createElement('div');actions.className='trip-history-actions';
+      const save=document.createElement('button');save.type='button';save.textContent='Exportar GPX';
+      save.onclick=()=>{try{const blob=new Blob([historyRecorder.toGPX(trip.id)],{type:'application/gpx+xml'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`motoradar-${trip.startedAt}.gpx`;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);}catch(_){toast('Não foi possível exportar o GPX.');}};
+      const erase=document.createElement('button');erase.type='button';erase.textContent='Excluir';erase.onclick=()=>{historyRecorder.erase(trip.id);openHistory();};
+      actions.append(save,erase);row.appendChild(actions);root.appendChild(row);
+    }
+    $('historyPanel').hidden=false;
+  }
   function stopNavigation(cancelSpeech=true){
+    finishRecording();
     const nav=state.nav;
     nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
@@ -408,7 +441,9 @@
     }
   }
   function gpsError(error){const txt=error?.code===1?'Localização negada. Autorize o GPS no navegador ou digite sua origem.':'GPS indisponível. Você pode preencher a origem manualmente.';toast(txt);if(state.nav.waiting||state.nav.active)navigationStatus(txt);if(error?.code===1&&state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null;}}
-  function updateGPS(pos){const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;const accuracy=Math.max(0,Math.round(pos.coords.accuracy||0));
+  function updateGPS(pos){
+    if(historyRecorder?.isRecording()) historyRecorder.addFix({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,speed:pos.coords.speed,altitude:pos.coords.altitude},pos.timestamp||Date.now());
+    const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;const accuracy=Math.max(0,Math.round(pos.coords.accuracy||0));
     // Somente o marcador/câmera são alinhados visualmente à rota. A posição original
     // segue para cálculo de desvio e registro GPS, evitando mascarar mudanças reais.
     const snap=state.nav.active && state.routeData?.geometry?.coordinates && window.MotoNavigation?.snapForDisplay
@@ -438,7 +473,8 @@
     state.mapReady=true;state.map.on('click',e=>{if(state.pickTarget){setPoint(state.pickTarget,e.latlng);stopPick();setMinimized(false);}});
     state.map.on('dragstart',()=>{setFollow(false);});renderPins();
   }
-  function initEvents(){ $('settingsBtn').onclick=openSettings;$('radarQuickBtn').onclick=openSettings;$('settingsClose').onclick=closeSettings;
+  function initEvents(){ $('tripRecordBtn').onclick=toggleRecording;$('tripHistoryBtn').onclick=openHistory;$('historyCloseBtn').onclick=()=>$('historyPanel').hidden=true;
+    $('settingsBtn').onclick=openSettings;$('radarQuickBtn').onclick=openSettings;$('settingsClose').onclick=closeSettings;
     $('settingsPanel').addEventListener('click',e=>{if(e.target===$('settingsPanel'))closeSettings();});
     $('routeToggle').onclick=()=>setMinimized(!$('routePanel').classList.contains('minimized'));
     $('editRouteBtn').onclick=()=>setMinimized(false);
@@ -468,6 +504,7 @@
     $('radarPlayBtn').onclick=toggleRadarAnimation;$('radarRefreshBtn').onclick=updateRadar;
   }
   function init(){if(typeof L==='undefined'){toast('O mapa não carregou. Confira sua conexão.');return;}
+    try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
     restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
