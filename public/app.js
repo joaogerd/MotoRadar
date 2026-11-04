@@ -44,8 +44,8 @@
   const unit = (p) => p ? `${p.lat},${p.lng}` : '';
   const escapeHtml = (s) => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const svgIcon = (name, cls='') => `<svg class=\"icon ${cls}\" aria-hidden=\"true\"><use href=\"#mr-${name}\"></use></svg>`;
-  const navIconName = (symbol) => ({'⚑':'flag','⟳':'roundabout','↶':'uturn','↱':'turn-right','↰':'turn-left','↑':'turn-straight','◎':'gps'}[symbol] || 'turn-straight');
-  function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-off':'voice-on','icon-md'); btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
+  const navIconName = (symbol) => ({'⚑':'flag-solid','⟳':'turn-roundabout-solid','↶':'turn-uturn-solid','↱':'turn-right-solid','↰':'turn-left-solid','↑':'turn-straight-solid','◎':'target-solid'}[symbol] || 'turn-straight-solid');
+  function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-muted-solid':'voice-solid','icon-md')+'<span class="action-label">Voz</span>'; btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
   function toast(message) { const el=$('toast'); el.textContent=message; el.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('show'),4800); }
   function persist() {
     try {
@@ -583,7 +583,7 @@
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
     const shown=snap.matched?L.latLng(snap.point.lat,snap.point.lng):p;
-    const icon=L.divIcon({className:'',iconSize:[40,44],iconAnchor:[20,22],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-vehicle-arrow" viewBox="0 0 40 44"><path d="M20 2 37 40 20 32 3 40Z"/></svg></div>'});
+    const icon=L.divIcon({className:'',iconSize:[48,52],iconAnchor:[24,26],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-bike" viewBox="0 0 48 52"><path class="bike-outline" d="M9 21q15-8 30 0M16 21h16M17 23v21h14V23Z"/><path class="bike-body" d="M20 17h8l5 11-5 15H20l-5-15z"/><circle class="bike-helmet" cx="24" cy="14" r="8"/><path class="bike-visor" d="M18 13q6-4 12 0"/><path class="bike-tail" d="M20 36h8"/></svg></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0,visibleNavigationFocusY());}
