@@ -43,6 +43,9 @@
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
   const unit = (p) => p ? `${p.lat},${p.lng}` : '';
   const escapeHtml = (s) => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const svgIcon = (name, cls='') => `<svg class=\"icon ${cls}\" aria-hidden=\"true\"><use href=\"#mr-${name}\"></use></svg>`;
+  const navIconName = (symbol) => ({'⚑':'flag','⟳':'roundabout','↶':'uturn','↱':'turn-right','↰':'turn-left','↑':'turn-straight','◎':'gps'}[symbol] || 'turn-straight');
+  function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-off':'voice-on','icon-md'); btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
   function toast(message) { const el=$('toast'); el.textContent=message; el.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('show'),4800); }
   function persist() {
     try {
@@ -65,12 +68,12 @@
   }
   function targetFor(id) { return id==='origin'?state.origin:id==='destination'?state.destination:state.stops.find(s=>s.id===id); }
   function targetInput(id) {return id==='origin'?$('originInput'):id==='destination'?$('destinationInput'):document.querySelector(`[data-stop-id="${CSS.escape(id)}"] .stop-input`);}
-  function setMinimized(on){$('routePanel').classList.toggle('minimized',on);$('routeToggle').setAttribute('aria-expanded',String(!on));$('routePanel').querySelector('.route-toggle-label').textContent=on?'Editar rota ⌄':'Recolher ⌃';}
+  function setMinimized(on){$('routePanel').classList.toggle('minimized',on);$('routeToggle').setAttribute('aria-expanded',String(!on));const label=$('routePanel').querySelector('.route-toggle-label');label.innerHTML=on?`Editar rota ${svgIcon('chevron-down','icon-xs')}`:`Recolher ${svgIcon('chevron-up','icon-xs')}`;}
   function clearSearch(){++state.searchVersion;$('placeResults').hidden=true;$('placeResults').replaceChildren();}
   function removeOldRoute(){if(state.nav.active||state.nav.waiting)stopNavigation();state.routeRequest++;removeRouteLayers();state.routeData=null;$('routeSummary').hidden=true;$('drawRouteBtn').disabled=false;$('drawRouteBtn').textContent='Mostrar rota no mapa';}
   function renderStops(){const root=$('stopsList');root.replaceChildren();state.stops.forEach((stop,i)=>{
     const row=document.createElement('div');row.className='route-field';row.dataset.stopId=stop.id;
-    row.innerHTML=`<span class="field-dot stop-dot"></span><div class="field-main"><label for="stop-${i}">Parada ${i+1}</label><div class="entry"><input class="stop-input" id="stop-${i}" type="search" autocomplete="off" maxlength="160" placeholder="Local da parada"><button class="place-search" type="button" aria-label="Buscar parada ${i+1}">⌕</button></div></div><div class="stop-actions"><button class="reorder-btn" type="button" aria-label="Subir parada" title="Subir" ${i===0?'disabled':''}>↑</button><button class="reorder-btn" type="button" aria-label="Descer parada" title="Descer" ${i===state.stops.length-1?'disabled':''}>↓</button><button class="reorder-btn map-stop" type="button" aria-label="Marcar parada no mapa" title="Marcar no mapa">⌖</button><button class="reorder-btn remove-btn" type="button" aria-label="Remover parada" title="Remover">✕</button></div>`;
+    row.innerHTML=`<span class="field-dot stop-dot"></span><div class="field-main"><label for="stop-${i}">Parada ${i+1}</label><div class="entry"><input class="stop-input" id="stop-${i}" type="search" autocomplete="off" maxlength="160" placeholder="Local da parada"><button class="place-search icon-btn" type="button" aria-label="Buscar parada ${i+1}">${svgIcon('search','icon-sm')}</button></div></div><div class="stop-actions"><button class="reorder-btn icon-btn" type="button" aria-label="Subir parada" title="Subir" ${i===0?'disabled':''}>${svgIcon('arrow-up')}</button><button class="reorder-btn icon-btn" type="button" aria-label="Descer parada" title="Descer" ${i===state.stops.length-1?'disabled':''}>${svgIcon('arrow-down')}</button><button class="reorder-btn map-stop icon-btn" type="button" aria-label="Marcar parada no mapa" title="Marcar no mapa">${svgIcon('pin')}</button><button class="reorder-btn remove-btn icon-btn" type="button" aria-label="Remover parada" title="Remover">${svgIcon('close')}</button></div>`;
     const input=row.querySelector('input');input.value=stop.label;
     input.addEventListener('input',()=>{stop.label=input.value;stop.point=null;persist();removeOldRoute();clearSearch();});
     input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchPlace(stop.id);}});
@@ -200,7 +203,7 @@
     $('tripSpeed').classList.toggle('unavailable',!valid);
   }
   function updateNavDisplay(info){
-    $('navigationArrow').textContent=info.icon||'↑';
+    $('navigationArrow').innerHTML=svgIcon(navIconName(info.icon||'↑'),'nav-arrow-svg');
     $('navigationInstruction').textContent=info.instruction;
     $('navigationTurn').textContent=info.lowAccuracy?'GPS impreciso':info.offRoute?'Fora da rota':MotoNavigation.fmt(info.maneuverMeters);
     const remaining=MotoNavigation.fmt(info.remainingMeters);
@@ -547,7 +550,7 @@
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
     const shown=snap.matched?L.latLng(snap.point.lat,snap.point.lng):p;
-    const icon=L.divIcon({className:'',iconSize:[19,19],iconAnchor:[9,9],html:'<div class="gps-pin"></div>'});
+    const icon=L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:'<div class="gps-pin"></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0);}
@@ -593,7 +596,7 @@
     $('navigationFullscreenBtn').onclick=toggleFullscreen;$('fullscreenFloatingBtn').onclick=toggleFullscreen;
     document.addEventListener('fullscreenchange',()=>{if(!isFullscreen())state.nav.fullscreenOwned=false;refreshFullscreenButtons();});
     $('navigationCenterBtn').onclick=()=>{setFollow(true);if(state.gpsPoint && perspective)perspective.update(state.gpsPoint,state.nav.cameraHeading||0);else if(state.gpsPoint && state.nav.active)followNavigationCamera(state.gpsPoint);else if(state.gpsPoint)state.map.setView(state.gpsPoint,Math.max(15,state.map.getZoom()));};
-    $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;$('navigationVoiceBtn').textContent=state.nav.muted?'🔇':'🔊';$('navigationVoiceBtn').setAttribute('aria-pressed',String(!state.nav.muted));if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
+    $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;setVoiceButton();if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && (state.nav.active||state.nav.waiting))keepAwake();});
     document.querySelectorAll('.map-pick[data-pick]').forEach(btn=>btn.onclick=()=>setPick(btn.dataset.pick));$('cancelPickBtn').onclick=()=>{stopPick();setMinimized(false);};
     $('radarVisibleBtn').onclick=()=>toggleRadar(!state.radarVisible);
@@ -611,7 +614,7 @@
     try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
     try{weatherMonitor.optedIn=localStorage.getItem('motoradar-weather-optin-v1')==='true';}catch(_){}
     $('radarAlertOptIn').checked=weatherMonitor.optedIn;
-    restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
+    restore();initMap();renderStops();setVoiceButton();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
       {$('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';$('tripSpeed').textContent='—';$('tripArrival').textContent='—';}},8000);

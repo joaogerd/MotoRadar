@@ -13,68 +13,101 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=9">
+<link rel="stylesheet" href="app.css?v=10">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script defer src="navigation.js?v=9"></script>
-<script defer src="trip-history.js?v=9"></script>
-<script defer src="offline-route.js?v=9"></script>
-<script defer src="smart-stops.js?v=9"></script>
-<script defer src="weather-corridor.js?v=9"></script>
-<script defer src="echo-motion.js?v=9"></script>
-<script defer src="perspective-map.js?v=9"></script>
-<script defer src="app.js?v=9"></script>
+<script defer src="navigation.js?v=10"></script>
+<script defer src="trip-history.js?v=10"></script>
+<script defer src="offline-route.js?v=10"></script>
+<script defer src="smart-stops.js?v=10"></script>
+<script defer src="weather-corridor.js?v=10"></script>
+<script defer src="echo-motion.js?v=10"></script>
+<script defer src="perspective-map.js?v=10"></script>
+<script defer src="app.js?v=10"></script>
 </head>
 <body>
+<svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
+  <defs>
+    <symbol id="mr-weather" viewBox="0 0 24 24"><circle cx="8" cy="8" r="3.2"></circle><path d="M8 2.6v1.8M8 11.6v1.8M2.6 8h1.8M11.6 8h1.8M4.3 4.3l1.2 1.2M10.5 10.5l1.2 1.2M11.7 4.3l-1.2 1.2M5.5 10.5l-1.2 1.2"></path><path d="M7 17.5a3.5 3.5 0 0 1 1.3-6.7 4.8 4.8 0 0 1 9.2 1.6A3.1 3.1 0 1 1 18 18H7.4"></path></symbol>
+    <symbol id="mr-settings" viewBox="0 0 24 24"><path d="M12 2.9v2.2M12 18.9v2.2M4.9 12H2.7M21.3 12h-2.2M6.7 6.7L5.2 5.2M18.8 18.8l-1.5-1.5M17.3 6.7l1.5-1.5M5.2 18.8l1.5-1.5"></path><circle cx="12" cy="12" r="4.2"></circle></symbol>
+    <symbol id="mr-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4"></circle><circle cx="18" cy="18" r="2.4"></circle><path d="M8.5 6h4.3a3.2 3.2 0 0 1 0 6.4h-1.6a3.2 3.2 0 0 0 0 6.4H15.5"></path></symbol>
+    <symbol id="mr-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l4.4 4.4"></path></symbol>
+    <symbol id="mr-gps" viewBox="0 0 24 24"><path d="M12 3v2.1M12 18.9V21M3 12h2.1M18.9 12H21"></path><circle cx="12" cy="12" r="6.5"></circle><circle cx="12" cy="12" r="1.7"></circle></symbol>
+    <symbol id="mr-pin" viewBox="0 0 24 24"><path d="M12 20.2s5.3-4.7 5.3-9a5.3 5.3 0 1 0-10.6 0c0 4.3 5.3 9 5.3 9Z"></path><circle cx="12" cy="11.2" r="1.8"></circle></symbol>
+    <symbol id="mr-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></symbol>
+    <symbol id="mr-broom" viewBox="0 0 24 24"><path d="M9 5h8"></path><path d="M11.5 5 8.2 8.3a2.4 2.4 0 0 0 0 3.4l4.1 4.1a2.4 2.4 0 0 0 3.4 0l3.3-3.3"></path><path d="M5.5 18.5h13"></path></symbol>
+    <symbol id="mr-fuel" viewBox="0 0 24 24"><path d="M6 19V6.4A1.4 1.4 0 0 1 7.4 5h6.2A1.4 1.4 0 0 1 15 6.4V19"></path><path d="M15 8h2.2l1.8 2v5.4a1.8 1.8 0 0 1-3.6 0V12"></path><path d="M8.7 9.3h3.6"></path></symbol>
+    <symbol id="mr-history" viewBox="0 0 24 24"><path d="M4.5 11A7.5 7.5 0 1 1 7 17"></path><path d="M4.5 6.5V11H9"></path><path d="M12 8v4l2.8 1.7"></path></symbol>
+    <symbol id="mr-tour" viewBox="0 0 24 24"><path d="M4 19.2h16"></path><path d="M7.2 19.2V10.8l4.8-2.8 4.8 2.8v8.4"></path><path d="M12 4v4"></path><path d="M10.2 5.8h3.6"></path></symbol>
+    <symbol id="mr-fullscreen" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M20 16v4h-4M8 20H4v-4"></path></symbol>
+    <symbol id="mr-locate" viewBox="0 0 24 24"><path d="M12 3v2.1M12 18.9V21M3 12h2.1M18.9 12H21"></path><circle cx="12" cy="12" r="4.4"></circle><path d="m12 7.7 2.4 6.8-2.4-1.6-2.4 1.6z"></path></symbol>
+    <symbol id="mr-sliders" viewBox="0 0 24 24"><path d="M4 6h7M15 6h5M10.8 6a1.8 1.8 0 1 0 0 .1zM4 12h3M11 12h9M8.8 12a1.8 1.8 0 1 0 0 .1zM4 18h9M17 18h3M14.8 18a1.8 1.8 0 1 0 0 .1z"></path></symbol>
+    <symbol id="mr-play" viewBox="0 0 24 24"><path d="M8 6.5v11l9-5.5Z"></path></symbol>
+    <symbol id="mr-voice-on" viewBox="0 0 24 24"><path d="M5 14h2.7L12 18V6L7.7 10H5z"></path><path d="M15.5 9.5a4.8 4.8 0 0 1 0 5"></path><path d="M17.8 7.3a8 8 0 0 1 0 9.4"></path></symbol>
+    <symbol id="mr-voice-off" viewBox="0 0 24 24"><path d="M5 14h2.7L12 18V6L7.7 10H5z"></path><path d="m16 9 4 6"></path><path d="m20 9-4 6"></path></symbol>
+    <symbol id="mr-record" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.5"></circle></symbol>
+    <symbol id="mr-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></symbol>
+    <symbol id="mr-chevron-up" viewBox="0 0 24 24"><path d="m6 14 6-6 6 6"></path></symbol>
+    <symbol id="mr-chevron-down" viewBox="0 0 24 24"><path d="m6 10 6 6 6-6"></path></symbol>
+    <symbol id="mr-arrow-up" viewBox="0 0 24 24"><path d="M12 18V6"></path><path d="m7 11 5-5 5 5"></path></symbol>
+    <symbol id="mr-arrow-down" viewBox="0 0 24 24"><path d="M12 6v12"></path><path d="m7 13 5 5 5-5"></path></symbol>
+    <symbol id="mr-turn-straight" viewBox="0 0 24 24"><path d="M12 20V5"></path><path d="m7.5 9.5 4.5-4.5 4.5 4.5"></path></symbol>
+    <symbol id="mr-turn-right" viewBox="0 0 24 24"><path d="M12 20v-8.5a4.5 4.5 0 0 1 4.5-4.5H19"></path><path d="m14.5 5 4.5 2.5-4.5 2.5"></path></symbol>
+    <symbol id="mr-turn-left" viewBox="0 0 24 24"><path d="M12 20v-8.5A4.5 4.5 0 0 0 7.5 7H5"></path><path d="m9.5 5L5 7.5 9.5 10"></path></symbol>
+    <symbol id="mr-uturn" viewBox="0 0 24 24"><path d="M12 20v-9.5A4.5 4.5 0 0 0 7.5 6H6"></path><path d="m10.5 3.8-4 2.2 4 2.2"></path></symbol>
+    <symbol id="mr-roundabout" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M12 5.2a6.8 6.8 0 0 1 6.8 6.8"></path><path d="m16.2 5.6 2.7 1-1 2.7"></path><path d="M18.8 12a6.8 6.8 0 0 1-6.8 6.8"></path><path d="m18.4 16.2-1 2.7-2.7-1"></path><path d="M12 18.8A6.8 6.8 0 0 1 5.2 12"></path><path d="m7.8 18.4-2.7-1 1-2.7"></path></symbol>
+    <symbol id="mr-flag" viewBox="0 0 24 24"><path d="M6 4v16"></path><path d="M6 5.5h8.5l-1.5 3 1.5 3H6"></path></symbol>
+  </defs>
+</svg>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
 <div id="perspectiveMap" aria-label="Mapa em perspectiva 3D" hidden></div>
 <header class="topbar">
- <div class="app-name"><span class="logo-mark">⛅</span><span><strong>MotoRadar</strong><small>Rota e chuva no mesmo mapa</small></span></div>
- <button id="settingsBtn" class="round-btn" type="button" title="Configurações de radar" aria-label="Configurações do radar">⚙</button>
+ <div class="app-name"><span class="logo-mark"><svg class="icon icon-xl"><use href="#mr-weather"></use></svg></span><span><strong>MotoRadar</strong><small>Rota e chuva no mesmo mapa</small></span></div>
+ <button id="settingsBtn" class="round-btn icon-btn" type="button" title="Configurações de radar" aria-label="Configurações do radar"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
 </header>
 <main>
  <section id="routePanel" class="route-card" aria-label="Planejar viagem">
-  <button id="routeToggle" class="route-heading" type="button" aria-expanded="true"><span class="route-title">↗ &nbsp;Planejar rota</span><span class="route-toggle-label">Recolher ⌃</span></button>
+  <button id="routeToggle" class="route-heading" type="button" aria-expanded="true"><span class="route-title"><svg class="icon icon-sm"><use href="#mr-route"></use></svg><span>Planejar rota</span></span><span class="route-toggle-label">Recolher <svg class="icon icon-xs"><use href="#mr-chevron-up"></use></svg></span></button>
   <div id="routeForm" class="route-content">
    <div class="route-field" data-target="origin">
     <div class="field-dot start-dot"></div>
-    <div class="field-main"><label for="originInput">Saída</label><div class="entry"><input id="originInput" type="search" placeholder="Endereço ou cidade de partida" autocomplete="off" maxlength="160"><button class="place-search" type="button" data-search="origin" aria-label="Buscar saída">⌕</button></div></div>
-    <button id="gpsUseBtn" class="tiny-btn" type="button" aria-label="Usar localização atual na saída" title="Usar localização atual">◎ GPS</button><button class="tiny-btn map-pick" type="button" data-pick="origin" aria-label="Marcar saída no mapa">⌖</button>
+    <div class="field-main"><label for="originInput">Saída</label><div class="entry"><input id="originInput" type="search" placeholder="Endereço ou cidade de partida" autocomplete="off" maxlength="160"><button class="place-search icon-btn" type="button" data-search="origin" aria-label="Buscar saída"><svg class="icon icon-sm"><use href="#mr-search"></use></svg></button></div></div>
+    <button id="gpsUseBtn" class="tiny-btn tiny-btn--icon" type="button" aria-label="Usar localização atual na saída" title="Usar localização atual"><svg class="icon icon-sm"><use href="#mr-gps"></use></svg><span>GPS atual</span></button><button class="tiny-btn map-pick icon-btn" type="button" data-pick="origin" aria-label="Marcar saída no mapa"><svg class="icon icon-sm"><use href="#mr-pin"></use></svg></button>
    </div>
    <div id="stopsList" aria-label="Paradas intermediárias"></div>
    <div class="route-field" data-target="destination">
     <div class="field-dot end-dot"></div>
-    <div class="field-main"><label for="destinationInput">Destino</label><div class="entry"><input id="destinationInput" type="search" placeholder="Onde deseja chegar?" autocomplete="off" maxlength="160"><button class="place-search" type="button" data-search="destination" aria-label="Buscar destino">⌕</button></div></div>
-    <button class="tiny-btn map-pick" type="button" data-pick="destination" title="Marcar destino no mapa" aria-label="Marcar destino no mapa">⌖</button>
+    <div class="field-main"><label for="destinationInput">Destino</label><div class="entry"><input id="destinationInput" type="search" placeholder="Onde deseja chegar?" autocomplete="off" maxlength="160"><button class="place-search icon-btn" type="button" data-search="destination" aria-label="Buscar destino"><svg class="icon icon-sm"><use href="#mr-search"></use></svg></button></div></div>
+    <button class="tiny-btn map-pick icon-btn" type="button" data-pick="destination" title="Marcar destino no mapa" aria-label="Marcar destino no mapa"><svg class="icon icon-sm"><use href="#mr-pin"></use></svg></button>
    </div>
    <div id="placeResults" class="place-results" role="region" aria-live="polite" aria-label="Locais encontrados" hidden></div>
-   <div class="route-tools"><button id="addStopBtn" class="text-btn" type="button">＋ Adicionar parada</button><button id="clearBtn" class="text-btn neutral" type="button">Limpar rota</button></div>
-   <button id="supportBtn" class="text-btn" type="button">⛽ Pontos de apoio</button>
-   <button id="tripHistoryBtn" class="text-btn" type="button">◴ Histórico de viagens</button>
-   <button id="brasiliaTourBtn" class="text-btn" type="button">↗ Carregar passeio turístico de Brasília</button>
+   <div class="route-tools"><button id="addStopBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-plus"></use></svg><span>Adicionar parada</span></button><button id="clearBtn" class="text-btn text-btn--icon neutral" type="button"><svg class="icon icon-sm"><use href="#mr-broom"></use></svg><span>Limpar rota</span></button></div>
+   <button id="supportBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-fuel"></use></svg><span>Pontos de apoio</span></button>
+   <button id="tripHistoryBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-history"></use></svg><span>Histórico de viagens</span></button>
+   <button id="brasiliaTourBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-tour"></use></svg><span>Carregar passeio turístico de Brasília</span></button>
    <p id="tourStatus" class="tiny-credit" role="status" aria-live="polite" hidden></p>
    <button id="drawRouteBtn" class="draw-btn" type="button">Mostrar rota no mapa</button>
    <div class="tiny-credit">Busca: © OpenStreetMap / Nominatim • Rodovias: OSRM (automóvel)</div>
   </div>
  </section>
  <div id="pickTip" class="pick-tip" hidden>Toque no mapa para marcar este ponto <button id="cancelPickBtn" type="button">Cancelar</button></div>
- <div class="float-actions"><button id="fullscreenFloatingBtn" type="button" title="Tela cheia" aria-label="Ativar tela cheia" aria-pressed="false">⛶</button><button id="gpsFloatingBtn" type="button" title="Minha localização" aria-label="Mostrar minha localização">◎</button></div>
+ <div class="float-actions"><button id="fullscreenFloatingBtn" class="icon-btn" type="button" title="Tela cheia" aria-label="Ativar tela cheia" aria-pressed="false"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button><button id="gpsFloatingBtn" class="icon-btn" type="button" title="Minha localização" aria-label="Mostrar minha localização"><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button></div>
  <div class="bottom-stack">
-  <div id="radarBadge" class="radar-badge"><span id="radarDot" class="radar-dot"></span><span id="radarAge">Carregando radar...</span><button id="radarQuickBtn" type="button" aria-label="Abrir controles do radar">☷</button></div>
+  <div id="radarBadge" class="radar-badge"><span id="radarDot" class="radar-dot"></span><span id="radarAge">Carregando radar...</span><button id="radarQuickBtn" class="icon-btn" type="button" aria-label="Abrir controles do radar"><svg class="icon icon-sm"><use href="#mr-sliders"></use></svg></button></div>
   <section id="routeSummary" class="route-summary" aria-live="polite" hidden>
    <div class="route-summary-top"><div><strong id="routeInfo">Rota planejada</strong><small id="routeDetail">Perfil de automóvel</small></div><button id="editRouteBtn" type="button">Editar</button></div>
-   <button id="startNavigationBtn" class="start-navigation" type="button">▶ Iniciar modo viagem</button>
+   <button id="startNavigationBtn" class="start-navigation start-navigation--icon" type="button"><svg class="icon icon-sm"><use href="#mr-play"></use></svg><span>Iniciar modo viagem</span></button>
     <div class="nav-actions"><button id="mapsBtn" class="maps-btn" type="button">Abrir Google Maps</button><button id="wazeBtn" class="waze-btn" type="button">Abrir Waze</button></div>
   </section>
  </div>
  <section id="navigationPanel" class="navigation-panel" aria-label="Próxima instrução de navegação" aria-live="polite" hidden>
-   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow" aria-hidden="true">↑</span>
+   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow" aria-hidden="true"><svg class="icon nav-arrow-svg"><use href="#mr-turn-straight"></use></svg></span>
      <div class="navigation-heading"><strong id="navigationTurn">—</strong><p id="navigationInstruction">Aguardando GPS…</p></div>
    </div>
  </section>
  <section id="tripDashboard" class="trip-dashboard" aria-label="Modo Viagem" hidden>
    <div class="trip-stage" id="tripStage"><div class="trip-destination"><span class="trip-stage-label">PRÓXIMA PARADA</span><strong id="navigationNextStop">Destino</strong><small id="navigationGpsState">Aguardando GPS…</small></div>
-     <button id="tripSettingsBtn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas">⚙</button>
+     <button id="tripSettingsBtn" class="icon-btn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
    </div>
    <div class="trip-metrics">
      <div class="trip-speed"><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span><small>Velocidade GPS</small></div>
@@ -88,17 +121,17 @@
    </div>
    <div class="navigation-actions trip-actions">
      <button id="navigation3dBtn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D">3D</button>
-     <button id="navigationFullscreenBtn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia">⛶</button>
-     <button id="navigationCenterBtn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar">◎</button>
-     <button id="navigationVoiceBtn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz">🔊</button>
-     <button id="tripRecordBtn" type="button" title="Gravar minha viagem neste aparelho" aria-pressed="false" aria-label="Iniciar gravação de trajeto">●</button>
+     <button id="navigationFullscreenBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button>
+     <button id="navigationCenterBtn" class="icon-btn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar"><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button>
+     <button id="navigationVoiceBtn" class="icon-btn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz"><svg class="icon icon-md"><use href="#mr-voice-on"></use></svg></button>
+     <button id="tripRecordBtn" class="icon-btn" type="button" title="Gravar minha viagem neste aparelho" aria-pressed="false" aria-label="Iniciar gravação de trajeto"><svg class="icon icon-md"><use href="#mr-record"></use></svg></button>
      <button id="navigationStopBtn" type="button">Encerrar viagem</button>
    </div>
  </section>
 </main>
 <div id="supportPanel" class="modal-cover" hidden>
   <section class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
-    <div class="sheet-head"><div><h2 id="supportTitle">Serviços perto da saída ou da moto</h2><small>Consulta manual ao OpenStreetMap / Overpass</small></div><button id="supportCloseBtn" class="round-btn" type="button" aria-label="Fechar apoio">✕</button></div>
+    <div class="sheet-head"><div><h2 id="supportTitle">Serviços perto da saída ou da moto</h2><small>Consulta manual ao OpenStreetMap / Overpass</small></div><button id="supportCloseBtn" class="round-btn icon-btn" type="button" aria-label="Fechar apoio"><svg class="icon icon-md"><use href="#mr-close"></use></svg></button></div>
     <label for="supportType">Categoria</label>
     <select id="supportType" class="support-select"><option value="fuel">Postos de combustível</option><option value="parking">Estacionamentos</option><option value="restaurant">Restaurantes</option><option value="cafe">Cafés</option><option value="hospital">Hospitais</option><option value="pharmacy">Farmácias</option></select>
     <button id="supportSearchBtn" class="secondary-action" type="button">Pesquisar num raio de 3 km</button>
@@ -108,7 +141,7 @@
 </div>
 <div id="historyPanel" class="modal-cover" hidden>
   <section class="settings-sheet" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
-    <div class="sheet-head"><div><h2 id="historyTitle">Histórico local de viagens</h2><small>Salvo somente neste aparelho, mediante gravação voluntária.</small></div><button id="historyCloseBtn" class="round-btn" type="button" aria-label="Fechar histórico">✕</button></div>
+    <div class="sheet-head"><div><h2 id="historyTitle">Histórico local de viagens</h2><small>Salvo somente neste aparelho, mediante gravação voluntária.</small></div><button id="historyCloseBtn" class="round-btn icon-btn" type="button" aria-label="Fechar histórico"><svg class="icon icon-md"><use href="#mr-close"></use></svg></button></div>
     <div id="tripHistoryList" role="list"></div>
     <p class="warning">As coordenadas podem revelar lugares visitados. Os arquivos GPX são exportados apenas mediante solicitação.</p>
   </section>
