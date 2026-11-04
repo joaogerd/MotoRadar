@@ -109,3 +109,7 @@ Nas configurações do radar, **Examinar até 30 km** amostra pixels transparent
 
 ### Perspectiva 3D opcional (experimental)
 Durante a navegação, o botão **3D** carrega MapLibre GL JS sob demanda e desenha a mesma rota com inclinação de câmera, marcador GPS e mosaico histórico RainViewer em camada raster. Se o navegador não oferecer WebGL ou a biblioteca CDN estiver indisponível, o MotoRadar preserva o mapa 2D Leaflet. A perspectiva não representa relevo 3D com DEM; é inclinação de mapa plano. O tempo de carregamento, consumo de dados e funcionamento em Android ainda exigem validação.
+
+### Movimento aparente histórico dos ecos (experimental)
+
+Comparação manual de dois quadros de mosaico RainViewer numa janela de 512px, com resolução zoom 7; exige CORS e ecos suficientes. Não é nowcasting, não estima chuva na superfície e **não** controla o roteamento.

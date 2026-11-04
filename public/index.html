@@ -21,6 +21,7 @@
 <script defer src="offline-route.js?v=9"></script>
 <script defer src="smart-stops.js?v=9"></script>
 <script defer src="weather-corridor.js?v=9"></script>
+<script defer src="echo-motion.js?v=9"></script>
 <script defer src="perspective-map.js?v=9"></script>
 <script defer src="app.js?v=8"></script>
 </head>
@@ -123,6 +124,8 @@
   <div class="setting-row"><span>Máscara de cobertura</span><button id="radarCoverageBtn" class="chip" type="button" aria-pressed="false">Desligada</button></div>
   <button id="radarRefreshBtn" class="secondary-action" type="button">↻ Atualizar radar</button>
   <div class="setting-row"><span>Análise indicativa do radar na rota</span><button id="radarAheadBtn" class="chip" type="button">Examinar até 30 km</button></div>
+  <div class="setting-row"><span>Deslocamento histórico aparente dos ecos</span><button id="radarMotionBtn" class="chip" type="button">Analisar dois quadros</button></div>
+  <p id="radarMotionStatus" class="warning" role="status">Sem estimativa: análise experimental, não é previsão.</p>
   <p id="radarAheadStatus" role="status" aria-live="polite" class="warning">Sem análise da rota. Mosaico histórico: sem nowcasting.</p>
   <label class="setting-row" for="radarAlertOptIn"><span>Habilitar avisos por voz de ecos detectados (experimental)</span><input id="radarAlertOptIn" type="checkbox"></label>
   <p class="warning">O horário do mosaico não é necessariamente o de cada varredura. Sem eco não significa cobertura, e eco não garante chuva na estrada.</p>
