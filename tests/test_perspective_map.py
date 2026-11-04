@@ -24,7 +24,7 @@ console.log(JSON.stringify({pitch:opts.pitch,bearing:moves.at(-1).bearing,offset
 
 def test_mode_is_optional_and_does_not_replace_2d_route():
  html=(ROOT/'index.html').read_text();app=(ROOT/'app.js').read_text()
- assert 'perspective-map.js?v=9' in html
+ assert 'perspective-map.js?v=10' in html
  assert 'perspectiveMap' in html and 'navigation3dBtn' in html
  assert 'togglePerspective' in app
  assert 'L.map(' in app
