@@ -66,3 +66,11 @@ def test_record_button_preserves_visual_identity_when_toggled():
     assert "setRecordingButton(true)" in js
     assert "setRecordingButton(false)" in js
     assert "tripRecordBtn').textContent" not in js
+
+
+def test_pwa_prefers_brand_svg_with_legacy_raster_fallback():
+    import json
+    manifest=json.loads((ROOT/'manifest.webmanifest').read_text())
+    assert manifest['icons'][0]['src']=='icon.svg'
+    assert any(icon['src']=='icon-192.png' for icon in manifest['icons'])
+    assert any(icon['src']=='icon-512.png' for icon in manifest['icons'])
