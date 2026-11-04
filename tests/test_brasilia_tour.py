@@ -1,5 +1,6 @@
 """Integration test for saved Brasília tour deep link. No live APIs used."""
 import json
+import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -60,7 +61,9 @@ def test_brasilia_tour_deep_link_loads_eight_stops_and_draws_circuit():
                 if 'nominatim.openstreetmap.org/search' in request.url:geocode_calls.append(request.url)
             page.on('request',geocode_capture)
             page.evaluate('location.hash = "roteiro=brasilia"')
-            html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=8">','<style>'+(ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=8"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=8"></script>','<script>'+(ROOT/'app.js').read_text()+'</script>')
+            html=(ROOT/'index.html').read_text()
+            html=re.sub(r'<link rel="stylesheet" href="app\.css\?v=\d+">',lambda _: '<style>'+(ROOT/'app.css').read_text()+'</style>',html)
+            html=re.sub(r'<script defer src="([a-z-]+\.js)\?v=\d+"></script>',lambda m:'<script>'+(ROOT/m.group(1)).read_text()+'</script>',html)
             page.set_content(html,wait_until='load')
             page.locator('#originInput').wait_for(state='attached',timeout=1500)
             assert page.locator('#originInput').input_value().startswith('Dok Hotel')

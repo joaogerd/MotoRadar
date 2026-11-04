@@ -2,6 +2,7 @@
 from pathlib import Path
 import subprocess
 import json
+import re
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright
@@ -129,10 +130,9 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page=context.new_page()
             page.evaluate('location.hash = "roteiro=brasilia"')
             html=(ROOT/'index.html').read_text()
-            html=html.replace('<link rel="stylesheet" href="app.css?v=8">','<style>'+ (ROOT/'app.css').read_text()+'</style>')
+            html=re.sub(r'<link rel="stylesheet" href="app\.css\?v=\d+">',lambda _: '<style>'+(ROOT/'app.css').read_text()+'</style>',html)
             html=html.replace('<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>','')
-            html=html.replace('<script defer src="navigation.js?v=8"></script>','<script>'+ (ROOT/'navigation.js').read_text()+'</script>')
-            html=html.replace('<script defer src="app.js?v=8"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
+            html=re.sub(r'<script defer src="([a-z-]+\.js)\?v=\d+"></script>',lambda m:'<script>'+(ROOT/m.group(1)).read_text()+'</script>',html)
             page.set_content(html,wait_until='load')
             page.wait_for_function('window.__lines >= 2',timeout=12000)
             assert page.locator('#startNavigationBtn').is_visible()
