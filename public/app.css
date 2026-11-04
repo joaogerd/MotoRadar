@@ -70,3 +70,8 @@ body:has(.navigation-panel:not([hidden])) .navigation-heading p{font-size:17px;l
 .trip-history-row small{font-size:11px;display:block;color:#63798c;padding:4px 0 8px}
 .trip-history-actions{display:flex;gap:8px}
 .trip-history-actions button{padding:10px 13px;border:1px solid #b8d3e8;border-radius:10px;color:#235b81;background:#f1f8ff}
+
+.support-select{width:100%;min-height:42px;border:1px solid #cbd9e5;border-radius:10px;background:#fff;padding:8px;margin:7px 0}
+.support-result{padding:11px 0;border-bottom:1px solid #e1ebf0;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.support-result strong{font-size:13px}.support-result small{font-size:11px;color:#6b7c8e;display:block;margin-top:3px}
+.support-result button{padding:10px;border:0;border-radius:10px;background:#e7f3ff;color:#17629c;white-space:nowrap}
