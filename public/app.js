@@ -44,8 +44,8 @@
   const unit = (p) => p ? `${p.lat},${p.lng}` : '';
   const escapeHtml = (s) => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const svgIcon = (name, cls='') => `<svg class=\"icon ${cls}\" aria-hidden=\"true\"><use href=\"#mr-${name}\"></use></svg>`;
-  const navIconName = (symbol) => ({'⚑':'flag','⟳':'roundabout','↶':'uturn','↱':'turn-right','↰':'turn-left','↑':'turn-straight','◎':'gps'}[symbol] || 'turn-straight');
-  function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-off':'voice-on','icon-md'); btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
+  const navIconName = (symbol) => ({'⚑':'flag-solid','⟳':'turn-roundabout-solid','↶':'turn-uturn-solid','↱':'turn-right-solid','↰':'turn-left-solid','↑':'turn-straight-solid','◎':'target-solid'}[symbol] || 'turn-straight-solid');
+  function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-muted-solid':'voice-solid','icon-md')+'<span class="action-label">Voz</span>'; btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
   function toast(message) { const el=$('toast'); el.textContent=message; el.classList.add('show');clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.classList.remove('show'),4800); }
   function persist() {
     try {
@@ -164,7 +164,7 @@
   function showRoute(route){
     removeRouteLayers();state.routeData=route;perspective?.setRoute(route.geometry);
     const base=L.geoJSON(route.geometry,{style:{color:'#ffffff',weight:10,opacity:.95}}).addTo(state.map);
-    const front=L.geoJSON(route.geometry,{style:{color:'#1479db',weight:6,opacity:.95}}).addTo(state.map);
+    const front=L.geoJSON(route.geometry,{style:{color:'#0d6efd',weight:7,opacity:.95}}).addTo(state.map);
     state.routeLayer={getBounds:()=>base.getBounds(),layers:[base,front]};
   }
   // O servidor público OSRM é para demonstração: jamais consultar mais de uma vez por segundo.
@@ -368,10 +368,16 @@
     }catch(err){root.textContent=String(err?.message||'Serviço indisponível. Tente novamente mais tarde.');}
     finally{$('supportSearchBtn').disabled=false;}
   }
+  function setRecordingButton(recording) {
+    const button=$('tripRecordBtn');
+    if(!button)return;
+    button.innerHTML=svgIcon('record-solid','icon-md')+'<span class="action-label">Gravar</span>';
+    button.setAttribute('aria-pressed',String(!!recording));
+    button.setAttribute('aria-label',recording?'Parar gravação do trajeto':'Iniciar gravação de trajeto');
+  }
   function finishRecording(){
     if(historyRecorder?.isRecording()) {
-      const done=historyRecorder.stop();$('tripRecordBtn').setAttribute('aria-pressed','false');
-      $('tripRecordBtn').textContent='●';
+      const done=historyRecorder.stop();setRecordingButton(false);
       if(done?.points.length)toast('Trajeto salvo somente neste aparelho. Abra Histórico para exportar GPX.');
     }
   }
@@ -380,8 +386,8 @@
     if(historyRecorder.isRecording()){finishRecording();return;}
     if(!state.nav.active){toast('Inicie o Modo Viagem antes de gravar o percurso.');return;}
     const label=state.destination.label||'Viagem de moto';
-    historyRecorder.start(label);$('tripRecordBtn').setAttribute('aria-pressed','true');
-    $('tripRecordBtn').textContent='■';toast('Gravação iniciada voluntariamente. Os dados ficam neste aparelho.');
+    historyRecorder.start(label);setRecordingButton(true);
+    toast('Gravação iniciada voluntariamente. Os dados ficam neste aparelho.');
   }
   function openHistory(){
     const root=$('tripHistoryList');root.replaceChildren();
@@ -583,7 +589,7 @@
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
     const shown=snap.matched?L.latLng(snap.point.lat,snap.point.lng):p;
-    const icon=L.divIcon({className:'',iconSize:[40,44],iconAnchor:[20,22],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-vehicle-arrow" viewBox="0 0 40 44"><path d="M20 2 37 40 20 32 3 40Z"/></svg></div>'});
+    const icon=L.divIcon({className:'',iconSize:[48,52],iconAnchor:[24,26],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-bike" viewBox="0 0 48 52"><path class="bike-outline" d="M9 21q15-8 30 0M16 21h16M17 23v21h14V23Z"/><path class="bike-body" d="M20 17h8l5 11-5 15H20l-5-15z"/><circle class="bike-helmet" cx="24" cy="14" r="8"/><path class="bike-visor" d="M18 13q6-4 12 0"/><path class="bike-tail" d="M20 36h8"/></svg></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0,visibleNavigationFocusY());}
@@ -650,7 +656,7 @@
     try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
     try{weatherMonitor.optedIn=localStorage.getItem('motoradar-weather-optin-v1')==='true';}catch(_){}
     $('radarAlertOptIn').checked=weatherMonitor.optedIn;
-    restore();initMap();renderStops();setVoiceButton();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
+    restore();initMap();renderStops();setVoiceButton();setRecordingButton(false);$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
       {$('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';$('tripSpeed').textContent='—';$('tripArrival').textContent='—';}},8000);

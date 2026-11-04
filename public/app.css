@@ -141,3 +141,81 @@ button:focus-visible{outline:3px solid #0d6efd;outline-offset:3px}
 .trip-dashboard.compact .trip-stage-actions #tripCompactCenterBtn{display:inline-flex}
 .trip-dashboard.compact .trip-panel-toggle{background:#eef4fa;min-width:78px}
 @media(max-width:390px){.trip-stage-actions{gap:5px}.trip-panel-toggle{padding:0 7px}.trip-dashboard.compact .trip-destination strong{font-size:14px}}
+
+
+/* MotoRadar Design v13 — visual navegacional inspirado na proposta aprovada.
+   Componentes de mapa permanecem vivos e acessíveis: não são screenshot. */
+:root{--mr-ink:#091f43;--mr-blue:#0d6efd;--mr-panel:#ffffff;--mr-softblue:#e8f1ff;--mr-danger:#dc2634}
+.brand-wordmark strong{display:block;font-weight:900;letter-spacing:-.065em;color:#0b254c;font-size:20px;font-style:italic;line-height:1.08}
+.brand-wordmark strong span{color:#126df5}.brand-wordmark small{font-size:10px;font-weight:650;letter-spacing:.01em}
+.logo-mark{background:transparent;box-shadow:none;overflow:hidden;border-radius:12px;width:42px;height:42px}
+.logo-mark img{display:block;width:100%;height:100%}
+.nav-brand{display:none;position:fixed;z-index:972;top:calc(env(safe-area-inset-top) + 5px);left:50%;transform:translateX(-50%);align-items:center;justify-content:center;gap:10px;width:max-content;max-width:95%;height:52px;padding:5px 12px;border-radius:15px;background:rgba(255,255,255,.96);box-shadow:0 2px 12px rgba(9,31,67,.12)}
+.nav-brand img{width:38px;height:38px;border-radius:11px}.nav-brand .brand-wordmark strong{font-size:19px}.nav-brand .brand-wordmark small{font-size:8px;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
+body:has(.navigation-panel:not([hidden])) .nav-brand{display:flex}
+body:has(.navigation-panel:not([hidden])) .navigation-panel{top:calc(env(safe-area-inset-top) + 64px)!important}
+.navigation-panel,body:has(.navigation-panel:not([hidden])) .navigation-panel{padding:14px 15px!important;border-radius:24px!important;background:linear-gradient(125deg,#092b57 0%,#051c3d 100%);box-shadow:0 10px 28px rgba(2,15,39,.28);border:2px solid rgba(255,255,255,.88)}
+.navigation-primary{gap:12px;min-height:75px}
+.navigation-arrow{min-width:83px;width:83px;min-height:78px;padding:4px 13px 4px 0;border-right:1.5px solid rgba(255,255,255,.4);color:#fff}
+.navigation-arrow .nav-arrow-svg{width:64px;height:64px;max-width:100%;stroke:none;fill:currentColor;filter:drop-shadow(0 2px 2px rgba(0,0,0,.1))}
+.navigation-heading strong{font-size:clamp(29px,8vw,40px);line-height:1.02;letter-spacing:-.035em;color:#fff}
+.navigation-heading p{font-size:clamp(17px,4.7vw,23px);line-height:1.25;font-weight:750;margin:5px 0 0;color:#fff;letter-spacing:-.02em}
+.trip-dashboard{color:#0a2144;padding:14px 14px 13px;border:1px solid #e1eaf6;border-radius:27px;max-height:min(66dvh,468px);overflow:visible;box-shadow:0 10px 33px rgba(5,28,61,.2);background:#fff}
+.trip-handle{width:46px;height:5px;border-radius:99px;background:#b9c4d5;margin:-7px auto 11px}
+.trip-stage{gap:8px;padding:0 0 11px;border-bottom:1px solid #dce6f2;min-height:64px}
+.trip-destination{flex-direction:row;align-items:center;gap:9px;min-width:0}
+.trip-stop-icon{width:26px;height:26px;flex:0 0 auto;color:#136eea;fill:currentColor;stroke:none}
+.trip-destination-text{min-width:0;display:flex;flex-direction:column;gap:3px}
+.trip-stage-label{font-size:10px;letter-spacing:.09em;color:#687f94}
+.trip-destination strong{font-size:clamp(14px,3.8vw,18px);line-height:1.18;font-weight:850;color:#09254d;max-width:100%;white-space:normal}
+.trip-destination small{font-size:10px;color:#748394}
+.trip-stage-actions{gap:5px;align-self:stretch}
+.trip-stage-actions #navigationFullscreenBtn{display:grid;place-items:center;min-width:48px;min-height:48px;background:#f3f7fc;color:#173c6a;border:1px solid #dce6f3;border-radius:14px}
+.trip-stage-actions #navigationFullscreenBtn .icon{width:22px;height:22px;stroke-width:2.8}
+.trip-stage-actions #tripSettingsBtn{min-width:72px;min-height:48px;padding:4px 7px;display:flex;gap:4px;flex-direction:column;align-items:center;justify-content:center;border-radius:13px;border:0;background:#e4edff;color:#0c62bf;font-size:10px;line-height:1.1;font-weight:850}
+.trip-stage-actions #tripSettingsBtn .icon{height:23px;width:26px;stroke:none;fill:currentColor}
+.trip-stage-actions #tripSettingsBtn span{white-space:nowrap}
+.trip-stage-actions #tripPanelToggleBtn{position:absolute;top:-21px;left:50%;transform:translateX(-50%);border:1px solid #d6e1ef;border-radius:15px;min-width:84px;min-height:42px;background:#fff;box-shadow:0 3px 10px rgba(11,45,82,.13)}
+.trip-dashboard.compact{max-height:none;overflow:visible}
+.trip-dashboard.compact .trip-handle{display:none}
+.trip-dashboard.compact .trip-stage{border-bottom:0;padding:0;min-height:54px}
+.trip-dashboard.compact .trip-stage-actions #tripPanelToggleBtn{position:static;transform:none;min-height:48px;box-shadow:none}
+.trip-dashboard.compact .trip-stage-actions #navigationFullscreenBtn{display:none}
+.trip-dashboard.compact .trip-stage-label{font-size:10px}
+.trip-dashboard.compact .trip-stop-icon{width:22px;height:22px}
+.trip-dashboard.compact .trip-destination strong{font-size:14px}
+.trip-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:12px 0 9px;align-items:stretch}
+.trip-metric{display:grid;grid-template-columns:34px minmax(0,1fr);grid-template-rows:auto auto;gap:1px 9px;min-height:67px;padding:8px 7px;align-items:center;justify-items:start}
+.trip-metric:nth-child(odd){border-right:1px solid #dce6f2}
+.trip-metric:nth-child(-n+2){border-bottom:1px solid #dce6f2}
+.trip-metric .metric-icon{grid-column:1;grid-row:1/span 2;width:31px;height:31px;align-self:center;color:#0c2c5d;stroke-width:2.7}
+.trip-metric small{display:block;grid-column:2;grid-row:1;font-size:10px;color:#51657e;line-height:1.2;font-weight:670}
+.trip-metric strong{grid-column:2;grid-row:2;font-size:clamp(19px,5.7vw,25px);font-weight:850;color:#071f42;line-height:1.12;letter-spacing:-.03em;white-space:nowrap}
+.trip-speed{border:0;padding-right:7px}
+.trip-speed .metric-value{grid-column:2;grid-row:2;display:flex;align-items:baseline;gap:3px;min-width:0}
+.trip-speed .metric-value strong{font-size:clamp(23px,6.8vw,31px);color:#0a7158;line-height:1.05}
+.trip-speed #tripSpeedUnit{font-size:12px;font-weight:800;color:#224467}
+.trip-speed strong.unavailable{color:#8298ae}
+.trip-utilities{display:flex;justify-content:center;align-items:center;gap:7px;border-radius:13px;background:#e7f0ff;padding:9px 10px;margin:2px 0 10px;border-bottom:none;min-height:38px}
+.trip-weather{font-size:12px;font-weight:750;color:#143f74}.trip-weather .icon{color:#0c6ed9;fill:currentColor;stroke:none;width:20px;height:20px}
+.trip-weather.stale{color:#98642a}
+.trip-actions,.trip-actions.navigation-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:0}
+.trip-actions button,.trip-actions #navigation3dBtn,.trip-actions #navigationStopBtn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:72px;min-width:0;padding:5px 2px;border-radius:17px;border:1px solid #dfe8f3;background:linear-gradient(#fff,#f1f6ff);box-shadow:0 4px 10px rgba(13,49,91,.1);color:#0b2e62}
+.trip-actions button .icon,.trip-actions #navigation3dBtn .icon{display:block;height:27px;width:27px;stroke-width:2.65;flex:0 0 auto}
+.trip-actions button .action-label{font-size:clamp(9px,2.65vw,12px);font-weight:850;line-height:1.06;color:inherit;text-align:center;letter-spacing:-.02em;overflow-wrap:anywhere}
+.trip-actions #navigationStopBtn{grid-column:auto;min-width:0;background:linear-gradient(160deg,#ed2b36,#c60d24);border-color:#c90e27;color:#fff;box-shadow:0 5px 11px rgba(173,18,39,.24)}
+.trip-actions #navigationStopBtn .icon{fill:currentColor;stroke:none}
+.trip-actions #navigationCenterBtn.following{background:#dff3ee;border-color:#80cfb9;color:#0a6c57}
+.trip-actions #tripRecordBtn .icon{width:26px;height:26px;fill:currentColor;stroke:none}
+.trip-actions #tripRecordBtn[aria-pressed="true"]{background:#fde4e6;border-color:#ed9ca9}
+.trip-actions #navigationVoiceBtn[aria-pressed="false"]{background:#f5edf0}
+.gps-vehicle{width:48px;height:52px;display:grid;place-items:center;filter:drop-shadow(0 3px 5px rgba(8,32,67,.3))}
+.gps-vehicle::before{width:68px;height:68px;background:rgba(38,122,255,.23);box-shadow:0 0 0 7px rgba(60,148,247,.1)}
+.gps-bike{width:45px;height:50px;transform:rotate(var(--gps-heading,0deg));transform-origin:center;filter:drop-shadow(0 2px 2px rgba(0,0,0,.24))}
+.gps-bike .bike-outline{stroke:#fff;stroke-width:4;stroke-linejoin:round;stroke-linecap:round;fill:none}
+.gps-bike .bike-body{stroke:#fff;stroke-width:2.6;fill:#0b2443}
+.gps-bike .bike-helmet{fill:#102c50;stroke:#fff;stroke-width:2.4}
+.gps-bike .bike-visor{stroke:#87bdfc;stroke-width:2.6;stroke-linecap:round;fill:none}
+.gps-bike .bike-tail{stroke:#fa3447;stroke-width:4;stroke-linecap:round;fill:none}
+@media(max-width:390px){.trip-dashboard{padding:11px 10px 10px}.trip-metric{grid-template-columns:25px minmax(0,1fr);column-gap:6px;padding:7px 4px;min-height:62px}.trip-metric .metric-icon{width:25px;height:25px}.trip-actions{gap:5px}.trip-actions button{min-height:70px}.trip-stage-actions #tripSettingsBtn{min-width:64px;font-size:9px}.trip-stop-icon{display:none}.nav-brand .brand-wordmark strong{font-size:17px}}
+@media(max-height:650px){.nav-brand{height:42px}.nav-brand img{height:32px;width:32px}body:has(.navigation-panel:not([hidden])) .navigation-panel{top:calc(env(safe-area-inset-top) + 48px)!important}.trip-dashboard:not(.compact){max-height:54dvh;overflow-y:auto}.trip-metrics{padding:5px 0}.trip-metric{min-height:53px}.trip-actions button{min-height:59px}}

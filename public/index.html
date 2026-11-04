@@ -13,17 +13,17 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=12">
+<link rel="stylesheet" href="app.css?v=13">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script defer src="navigation.js?v=12"></script>
-<script defer src="trip-history.js?v=12"></script>
-<script defer src="offline-route.js?v=12"></script>
-<script defer src="smart-stops.js?v=12"></script>
-<script defer src="weather-corridor.js?v=12"></script>
-<script defer src="echo-motion.js?v=12"></script>
-<script defer src="perspective-map.js?v=12"></script>
-<script defer src="app.js?v=12"></script>
+<script defer src="navigation.js?v=13"></script>
+<script defer src="trip-history.js?v=13"></script>
+<script defer src="offline-route.js?v=13"></script>
+<script defer src="smart-stops.js?v=13"></script>
+<script defer src="weather-corridor.js?v=13"></script>
+<script defer src="echo-motion.js?v=13"></script>
+<script defer src="perspective-map.js?v=13"></script>
+<script defer src="app.js?v=13"></script>
 </head>
 <body>
 <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -69,14 +69,31 @@
     <symbol id="mr-poi-shelter" viewBox="0 0 24 24"><path d="M3 10h18M5 10l7-6 7 6M6 10v10M18 10v10M9 15h6M9 18h6"/></symbol>
     <symbol id="mr-poi-coffee" viewBox="0 0 24 24"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h2a2 2 0 0 1 0 4h-2M7 5v2m4-3v3m4-2v2"/></symbol>
     <symbol id="mr-alert-warning" viewBox="0 0 24 24"><path d="m12 3 10 18H2z"/><path d="M12 9v5m0 3v.5"/></symbol>
+    <symbol id="mr-turn-left-solid" viewBox="0 0 24 24"><path d="M18 21v-8.2c0-3.8-2.4-6.3-6.2-6.3H5" stroke="currentColor" stroke-width="5.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M9.2 1.1 1.3 6.5l7.9 5.6Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="mr-turn-right-solid" viewBox="0 0 24 24"><path d="M6 21v-8.2c0-3.8 2.4-6.3 6.2-6.3H19" stroke="currentColor" stroke-width="5.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M14.8 1.1 22.7 6.5l-7.9 5.6Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="mr-turn-straight-solid" viewBox="0 0 24 24"><path d="M12 21V6.7" stroke="currentColor" stroke-width="5.3" stroke-linecap="round" fill="none"/><path d="M12 .8 3.2 10.7h17.6Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="mr-turn-uturn-solid" viewBox="0 0 24 24"><path d="M18 21v-9.4a6 6 0 0 0-12 0v1.1" stroke="currentColor" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M1 10.7 6 18.2l5-7.5Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="mr-turn-roundabout-solid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/><path d="M12 2.5a9.5 9.5 0 1 1-9.5 9.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" fill="none"/><path d="M1.5 5.8 4 13.5 9.2 7.6Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="mr-speed-solid" viewBox="0 0 24 24"><path d="M3.3 18.9a9.4 9.4 0 1 1 17.4 0" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M12 15.5 17.8 8" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/><circle cx="12" cy="15.5" r="2.2" fill="currentColor" stroke="none"/><path d="M7 20h10" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></symbol>
+    <symbol id="mr-route-solid" viewBox="0 0 24 24"><path d="M7.3 5.7a2.8 2.8 0 1 0-5.6 0c0 3.1 2.8 5.4 2.8 5.4s2.8-2.3 2.8-5.4z" fill="currentColor" stroke="none"/><circle cx="4.5" cy="5.7" r="1.1" fill="#fff" stroke="none"/><path d="M22.2 17a2.8 2.8 0 1 0-5.6 0c0 3.1 2.8 5.4 2.8 5.4s2.8-2.3 2.8-5.4z" fill="currentColor" stroke="none"/><circle cx="19.4" cy="17" r="1.1" fill="#fff" stroke="none"/><path d="M7 11.2c5.5-3 11.5 0 6.8 4-2.5 2-5.5.3-4.2-1.3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="1 3" fill="none"/></symbol>
+    <symbol id="mr-flag-solid" viewBox="0 0 24 24"><path d="M5.5 2.5v19" stroke="currentColor" stroke-width="2.7" stroke-linecap="round"/><path d="M7 3.5h12v11H7z" fill="currentColor" stroke="none"/><path d="M7 3.5h6v5.5H7ZM13 9h6v5.5h-6Z" fill="#fff" stroke="none"/></symbol>
+    <symbol id="mr-timer-solid" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="8" stroke="currentColor" stroke-width="2.8" fill="none"/><path d="M12 9v5l3 1.6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M9.5 2.2h5M17.5 5.8l2-2" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="mr-layer-solid" viewBox="0 0 24 24"><path d="m12 2 10 6-10 6L2 8Z" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" fill="none"/><path d="m2 13 10 6 10-6M2 18l10 5 10-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="mr-target-solid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.3" stroke="currentColor" stroke-width="2.9" fill="none"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></symbol>
+    <symbol id="mr-voice-solid" viewBox="0 0 24 24"><path d="M3 9.3h4.4l5.3-4.7v14.8l-5.3-4.7H3Z" fill="currentColor" stroke="none"/><path d="M16.3 8.5a5 5 0 0 1 0 7M19.1 5.7a9 9 0 0 1 0 12.6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="mr-voice-muted-solid" viewBox="0 0 24 24"><path d="M3 9.3h4.4l5.3-4.7v14.8l-5.3-4.7H3Z" fill="currentColor" stroke="none"/><path d="m16 9 6 6m0-6-6 6" stroke="currentColor" stroke-width="2.9" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="mr-record-solid" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14.5" rx="4" fill="currentColor" stroke="none"/><circle cx="12" cy="12.2" r="4.2" fill="#fff" stroke="none"/><circle cx="12" cy="12.2" r="2.7" fill="#e12a39" stroke="none"/></symbol>
+    <symbol id="mr-radar-solid" viewBox="0 0 24 24"><path d="M5.8 16.8a4.4 4.4 0 0 1-.4-8.7 6.2 6.2 0 0 1 11.9 1.3A3.8 3.8 0 1 1 18 16.8Z" fill="currentColor" stroke="none"/><path d="m7.5 19-1.3 2.6m6.5-2.6-1.3 2.6m6.4-2.6-1.3 2.6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="mr-fuel-solid" viewBox="0 0 24 24"><path d="M4 21V6c0-2 1.4-3 3.2-3h7.2c1.7 0 2.6 1.3 2.6 3V21Z" fill="currentColor" stroke="none"/><rect x="6.5" y="6" width="7.5" height="5.2" rx="1" fill="#fff" stroke="none"/><path d="M17 8.8h2l2.1 2.5v5.1a1.7 1.7 0 0 1-3.4 0V13" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M2.5 21h15" stroke="currentColor" stroke-width="2.5"/></symbol>
   </defs>
 </svg>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
 <div id="perspectiveMap" aria-label="Mapa em perspectiva 3D" hidden></div>
 <header class="topbar">
- <div class="app-name"><span class="logo-mark"><svg class="icon icon-xl"><use href="#mr-weather"></use></svg></span><span><strong>MotoRadar</strong><small>Rota e chuva no mesmo mapa</small></span></div>
+ <div class="app-name"><span class="logo-mark"><img src="icon.svg" width="40" height="40" alt=""></span><span class="brand-wordmark"><strong>Moto<span>Radar</span></strong><small>Rota e chuva no mesmo mapa</small></span></div>
  <button id="settingsBtn" class="round-btn icon-btn" type="button" title="Configurações de radar" aria-label="Configurações do radar"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
 </header>
+<div id="navigationBrand" class="nav-brand" aria-hidden="true"><img src="icon.svg" width="40" height="40" alt=""><span class="brand-wordmark"><strong>Moto<span>Radar</span></strong><small>Navegação inteligente para a estrada</small></span></div>
 <main>
  <section id="routePanel" class="route-card" aria-label="Planejar viagem">
   <button id="routeToggle" class="route-heading" type="button" aria-expanded="true"><span class="route-title"><svg class="icon icon-sm"><use href="#mr-route"></use></svg><span>Planejar rota</span></span><span class="route-toggle-label">Recolher <svg class="icon icon-xs"><use href="#mr-chevron-up"></use></svg></span></button>
@@ -94,7 +111,7 @@
    </div>
    <div id="placeResults" class="place-results" role="region" aria-live="polite" aria-label="Locais encontrados" hidden></div>
    <div class="route-tools"><button id="addStopBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-plus"></use></svg><span>Adicionar parada</span></button><button id="clearBtn" class="text-btn text-btn--icon neutral" type="button"><svg class="icon icon-sm"><use href="#mr-broom"></use></svg><span>Limpar rota</span></button></div>
-   <button id="supportBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-fuel"></use></svg><span>Pontos de apoio</span></button>
+   <button id="supportBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-fuel-solid"></use></svg><span>Pontos de apoio</span></button>
    <button id="tripHistoryBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-history"></use></svg><span>Histórico de viagens</span></button>
    <button id="brasiliaTourBtn" class="text-btn text-btn--icon" type="button"><svg class="icon icon-sm"><use href="#mr-tour"></use></svg><span>Carregar passeio turístico de Brasília</span></button>
    <p id="tourStatus" class="tiny-credit" role="status" aria-live="polite" hidden></p>
@@ -113,35 +130,44 @@
   </section>
  </div>
  <section id="navigationPanel" class="navigation-panel" aria-label="Próxima instrução de navegação" aria-live="polite" hidden>
-   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow" aria-hidden="true"><svg class="icon nav-arrow-svg"><use href="#mr-turn-straight"></use></svg></span>
+   <div class="navigation-primary"><span id="navigationArrow" class="navigation-arrow" aria-hidden="true"><svg class="icon nav-arrow-svg"><use href="#mr-turn-straight-solid"></use></svg></span>
      <div class="navigation-heading"><strong id="navigationTurn">—</strong><p id="navigationInstruction">Aguardando GPS…</p></div>
    </div>
  </section>
  <section id="tripDashboard" class="trip-dashboard" aria-label="Modo Viagem" hidden>
-   <div class="trip-stage" id="tripStage"><div class="trip-destination"><span class="trip-stage-label">PRÓXIMA PARADA</span><strong id="navigationNextStop">Destino</strong><small id="navigationGpsState">Aguardando GPS…</small></div>
+   <div class="trip-handle" aria-hidden="true"></div>
+   <div class="trip-stage" id="tripStage">
+     <div class="trip-destination">
+       <svg class="icon trip-stop-icon" aria-hidden="true"><use href="#mr-flag-solid"></use></svg>
+       <div class="trip-destination-text">
+         <span class="trip-stage-label">PRÓXIMA PARADA</span>
+         <strong id="navigationNextStop">Destino</strong>
+         <small id="navigationGpsState">Aguardando GPS…</small>
+       </div>
+     </div>
      <div class="trip-stage-actions">
-       <button id="tripCompactCenterBtn" class="icon-btn" type="button" aria-label="Centralizar a moto no mapa" title="Centralizar localização" hidden><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button>
+       <button id="tripCompactCenterBtn" class="icon-btn" type="button" aria-label="Centralizar a moto no mapa" title="Centralizar localização" hidden><svg class="icon icon-md"><use href="#mr-target-solid"></use></svg></button>
        <button id="tripPanelToggleBtn" class="trip-panel-toggle" type="button" aria-expanded="true" aria-controls="tripMetrics tripUtilities tripActions" aria-label="Recolher painel para ver o mapa"><svg class="icon icon-sm" aria-hidden="true"><use id="tripPanelToggleIcon" href="#mr-chevron-down"></use></svg><span id="tripPanelToggleLabel">Mapa</span></button>
-       <button id="tripSettingsBtn" class="icon-btn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
+       <button id="navigationFullscreenBtn" class="icon-btn nav-fullscreen" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button>
+       <button id="tripSettingsBtn" class="trip-radar-btn" type="button" aria-label="Configurações meteorológicas" title="Radar e clima"><svg class="icon icon-md"><use href="#mr-radar-solid"></use></svg><span>Radar e clima</span></button>
      </div>
    </div>
    <div id="tripMetrics" class="trip-metrics">
-     <div class="trip-speed"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-speed"></use></svg><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span><small>Velocidade GPS</small></div>
-     <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-route"></use></svg><strong id="tripDistance">—</strong><small>Distância restante</small></div>
-     <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-flag"></use></svg><strong id="tripArrival">—</strong><small>Chegada estimada</small></div>
-     <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-timer"></use></svg><strong id="tripDuration">—</strong><small>Tempo restante (aprox.)</small></div>
+     <div class="trip-speed trip-metric"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-speed-solid"></use></svg><small>Velocidade GPS</small><div class="metric-value"><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span></div></div>
+     <div class="trip-stat trip-metric"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-route-solid"></use></svg><small>Distância restante</small><strong id="tripDistance">—</strong></div>
+     <div class="trip-stat trip-metric"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-flag-solid"></use></svg><small>Chegada estimada</small><strong id="tripArrival">—</strong></div>
+     <div class="trip-stat trip-metric"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-timer-solid"></use></svg><small>Tempo restante</small><strong id="tripDuration">—</strong></div>
    </div>
    <div id="tripUtilities" class="trip-utilities">
-     <span class="trip-weather" id="tripRadarStatus"><svg class="icon icon-sm" aria-hidden="true"><use href="#mr-poi-rain"></use></svg><span id="tripRadarText">Radar: consultando…</span></span>
+     <span class="trip-weather" id="tripRadarStatus"><svg class="icon icon-sm" aria-hidden="true"><use href="#mr-radar-solid"></use></svg><span id="tripRadarText">Radar: consultando…</span></span>
      <span class="trip-nav-remaining" id="navigationRemaining" aria-label="Distância restante" hidden>—</span><span id="navigationEta" hidden>—</span>
    </div>
    <div id="tripActions" class="navigation-actions trip-actions">
-     <button id="navigation3dBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D"><svg class="icon icon-md"><use href="#mr-icon-3d"></use></svg><span class="action-label">3D</span></button>
-     <button id="navigationFullscreenBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button>
-     <button id="navigationCenterBtn" class="icon-btn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar"><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button>
-     <button id="navigationVoiceBtn" class="icon-btn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz"><svg class="icon icon-md"><use href="#mr-voice-on"></use></svg></button>
-     <button id="tripRecordBtn" class="icon-btn" type="button" title="Gravar minha viagem neste aparelho" aria-pressed="false" aria-label="Iniciar gravação de trajeto"><svg class="icon icon-md"><use href="#mr-record"></use></svg></button>
-     <button id="navigationStopBtn" type="button"><svg class="icon icon-md" aria-hidden="true"><use href="#mr-flag"></use></svg><span>Encerrar viagem</span></button>
+     <button id="navigation3dBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D"><svg class="icon icon-md"><use href="#mr-layer-solid"></use></svg><span class="action-label">3D</span></button>
+     <button id="navigationCenterBtn" class="icon-btn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar"><svg class="icon icon-md"><use href="#mr-target-solid"></use></svg><span class="action-label">Centralizar</span></button>
+     <button id="navigationVoiceBtn" class="icon-btn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz"><svg class="icon icon-md"><use href="#mr-voice-solid"></use></svg><span class="action-label">Voz</span></button>
+     <button id="tripRecordBtn" class="icon-btn" type="button" title="Gravar minha viagem neste aparelho" aria-pressed="false" aria-label="Iniciar gravação de trajeto"><svg class="icon icon-md"><use href="#mr-record-solid"></use></svg><span class="action-label">Gravar</span></button>
+     <button id="navigationStopBtn" type="button"><svg class="icon icon-md" aria-hidden="true"><use href="#mr-flag-solid"></use></svg><span class="action-label">Encerrar viagem</span></button>
    </div>
  </section>
 </main>

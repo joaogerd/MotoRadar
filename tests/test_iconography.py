@@ -30,7 +30,7 @@ def test_svg_icons_reference_local_sprite_without_new_cdn():
 
 def test_navigation_dynamic_arrows_voice_and_stop_controls_are_svg():
     code = (ROOT / 'public/app.js').read_text()
-    assert 'navIconName' in code and "'↱':'turn-right'" in code
+    assert 'navIconName' in code and "'↱':'turn-right-solid'" in code
     assert "$('navigationArrow').innerHTML=svgIcon(" in code
     assert 'setVoiceButton()' in code
     assert 'navigationVoiceBtn' in code
@@ -42,8 +42,8 @@ def test_navigation_dynamic_arrows_voice_and_stop_controls_are_svg():
 
 def test_icon_asset_release_is_versioned():
     html = (ROOT / 'public/index.html').read_text()
-    assert 'app.css?v=12' in html and 'app.js?v=12' in html
-    assert 'motoradar-shell-v13' in (ROOT / 'public/sw.js').read_text()
+    assert 'app.css?v=13' in html and 'app.js?v=13' in html
+    assert 'motoradar-shell-v14' in (ROOT / 'public/sw.js').read_text()
 
 def test_navigation_visual_system_v11():
     html=(ROOT/'public/index.html').read_text()
@@ -51,6 +51,6 @@ def test_navigation_visual_system_v11():
     app=(ROOT/'public/app.js').read_text()
     for name in ('mr-icon-3d','mr-speed','mr-timer','mr-turn-keep-right','mr-poi-hospital','mr-poi-rain'):
         assert name in html
-    assert 'gps-vehicle-arrow' in app
+    assert 'gps-bike' in app
     assert '--mr-navy:#092650' in css
     assert 'tripRadarText' in html and "('tripRadarText').textContent" in app
