@@ -337,7 +337,7 @@
     if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
     // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
   }
-  // MapLibre v6 usa módulos ES, não possui o bundle global maplibre-gl.js da v5.
+  // MapLibre v6 usa módulos ES, não possui o bundle global UMD da v5.
   // Evita download/instalação até o usuário pedir a perspectiva 3D.
   async function loadMapLibre(){
     if(window.maplibregl?.Map)return window.maplibregl;
