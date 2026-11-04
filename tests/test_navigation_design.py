@@ -14,7 +14,7 @@ def test_original_brand_and_bold_turn_maneuver_symbols():
     assert 'mr-turn-left-solid' in html
     assert 'mr-turn-right-solid' in html
     assert 'mr-turn-straight-solid' in html
-    assert '#mr-turn-left-solid' in html
+    assert 'id="mr-turn-left-solid"' in html
     assert 'navigationArrow' in html
     assert 'nav-arrow-svg' in css
     assert 'fill:currentColor' in css
