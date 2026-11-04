@@ -25,7 +25,7 @@ def test_trip_display_driven_by_gps_and_osrm_not_guessed():
     assert "$('tripDashboard').hidden=false" in js
     assert "$('tripDashboard').hidden=true" in js
     assert "$('tripSettingsBtn').onclick=openSettings" in js
-    assert "$('tripRadarStatus').textContent" in js
+    assert "$('tripRadarText').textContent" in js
 
 
 def test_trip_mode_clear_map_and_recover_when_stopped():

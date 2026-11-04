@@ -13,17 +13,17 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=10">
+<link rel="stylesheet" href="app.css?v=11">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script defer src="navigation.js?v=10"></script>
-<script defer src="trip-history.js?v=10"></script>
-<script defer src="offline-route.js?v=10"></script>
-<script defer src="smart-stops.js?v=10"></script>
-<script defer src="weather-corridor.js?v=10"></script>
-<script defer src="echo-motion.js?v=10"></script>
-<script defer src="perspective-map.js?v=10"></script>
-<script defer src="app.js?v=10"></script>
+<script defer src="navigation.js?v=11"></script>
+<script defer src="trip-history.js?v=11"></script>
+<script defer src="offline-route.js?v=11"></script>
+<script defer src="smart-stops.js?v=11"></script>
+<script defer src="weather-corridor.js?v=11"></script>
+<script defer src="echo-motion.js?v=11"></script>
+<script defer src="perspective-map.js?v=11"></script>
+<script defer src="app.js?v=11"></script>
 </head>
 <body>
 <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -57,6 +57,18 @@
     <symbol id="mr-uturn" viewBox="0 0 24 24"><path d="M12 20v-9.5A4.5 4.5 0 0 0 7.5 6H6"></path><path d="m10.5 3.8-4 2.2 4 2.2"></path></symbol>
     <symbol id="mr-roundabout" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M12 5.2a6.8 6.8 0 0 1 6.8 6.8"></path><path d="m16.2 5.6 2.7 1-1 2.7"></path><path d="M18.8 12a6.8 6.8 0 0 1-6.8 6.8"></path><path d="m18.4 16.2-1 2.7-2.7-1"></path><path d="M12 18.8A6.8 6.8 0 0 1 5.2 12"></path><path d="m7.8 18.4-2.7-1 1-2.7"></path></symbol>
     <symbol id="mr-flag" viewBox="0 0 24 24"><path d="M6 4v16"></path><path d="M6 5.5h8.5l-1.5 3 1.5 3H6"></path></symbol>
+    <symbol id="mr-icon-3d" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5zM3 12l9 5 9-5M3 17l9 5 9-5"/></symbol>
+    <symbol id="mr-speed" viewBox="0 0 24 24"><path d="M4 18a9 9 0 1 1 16 0M12 13l4-4M8 18h8"/></symbol>
+    <symbol id="mr-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 13V8M9 2h6M18 6l2-2"/></symbol>
+    <symbol id="mr-turn-keep-right" viewBox="0 0 24 24"><path d="M9 21V12q0-4 4-6l5-2"/><path d="m13 2 5 2-1 5"/></symbol>
+    <symbol id="mr-turn-keep-left" viewBox="0 0 24 24"><path d="M15 21V12q0-4-4-6L6 4"/><path d="m11 2-5 2 1 5"/></symbol>
+    <symbol id="mr-turn-exit-right" viewBox="0 0 24 24"><path d="M9 21V5M9 15q0-6 8-8"/><path d="m13 4 5 2-1 5"/></symbol>
+    <symbol id="mr-poi-hospital" viewBox="0 0 24 24"><path d="M9 4h6v5h5v6h-5v5H9v-5H4V9h5z"/></symbol>
+    <symbol id="mr-poi-food" viewBox="0 0 24 24"><path d="M6 3v7m3-7v7M4 3v5a4 4 0 0 0 8 0V3M8 12v9M18 3c-2 2-3 5-3 9h4V3M19 12v9"/></symbol>
+    <symbol id="mr-poi-rain" viewBox="0 0 24 24"><path d="M6 16a4 4 0 0 1-.1-8 6 6 0 0 1 11.5 1.4A3.4 3.4 0 1 1 18 16H6"/><path d="m8 19-1 2m6-2-1 2m6-2-1 2"/></symbol>
+    <symbol id="mr-poi-shelter" viewBox="0 0 24 24"><path d="M3 10h18M5 10l7-6 7 6M6 10v10M18 10v10M9 15h6M9 18h6"/></symbol>
+    <symbol id="mr-poi-coffee" viewBox="0 0 24 24"><path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h2a2 2 0 0 1 0 4h-2M7 5v2m4-3v3m4-2v2"/></symbol>
+    <symbol id="mr-alert-warning" viewBox="0 0 24 24"><path d="m12 3 10 18H2z"/><path d="M12 9v5m0 3v.5"/></symbol>
   </defs>
 </svg>
 <div id="map" aria-label="Mapa com rota e radar meteorológico"></div>
@@ -110,22 +122,22 @@
      <button id="tripSettingsBtn" class="icon-btn" type="button" aria-label="Configurações meteorológicas" title="Configurações meteorológicas"><svg class="icon icon-md"><use href="#mr-settings"></use></svg></button>
    </div>
    <div class="trip-metrics">
-     <div class="trip-speed"><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span><small>Velocidade GPS</small></div>
-     <div class="trip-stat"><strong id="tripDistance">—</strong><small>Distância restante</small></div>
-     <div class="trip-stat"><strong id="tripArrival">—</strong><small>Chegada estimada</small></div>
-     <div class="trip-stat"><strong id="tripDuration">—</strong><small>Tempo restante (aprox.)</small></div>
+     <div class="trip-speed"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-speed"></use></svg><strong id="tripSpeed">—</strong><span id="tripSpeedUnit">km/h</span><small>Velocidade GPS</small></div>
+     <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-route"></use></svg><strong id="tripDistance">—</strong><small>Distância restante</small></div>
+     <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-flag"></use></svg><strong id="tripArrival">—</strong><small>Chegada estimada</small></div>
+     <div class="trip-stat"><svg class="icon metric-icon" aria-hidden="true"><use href="#mr-timer"></use></svg><strong id="tripDuration">—</strong><small>Tempo restante (aprox.)</small></div>
    </div>
    <div class="trip-utilities">
-     <span class="trip-weather" id="tripRadarStatus">Radar: consultando…</span>
+     <span class="trip-weather" id="tripRadarStatus"><svg class="icon icon-sm" aria-hidden="true"><use href="#mr-poi-rain"></use></svg><span id="tripRadarText">Radar: consultando…</span></span>
      <span class="trip-nav-remaining" id="navigationRemaining" aria-label="Distância restante" hidden>—</span><span id="navigationEta" hidden>—</span>
    </div>
    <div class="navigation-actions trip-actions">
-     <button id="navigation3dBtn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D">3D</button>
+     <button id="navigation3dBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar perspectiva 3D" title="Perspectiva 3D"><svg class="icon icon-md"><use href="#mr-icon-3d"></use></svg><span class="action-label">3D</span></button>
      <button id="navigationFullscreenBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button>
      <button id="navigationCenterBtn" class="icon-btn" type="button" aria-label="Retomar acompanhamento da moto" aria-pressed="false" title="Centralizar"><svg class="icon icon-md"><use href="#mr-locate"></use></svg></button>
      <button id="navigationVoiceBtn" class="icon-btn" type="button" aria-pressed="true" aria-label="Alternar instruções por voz" title="Instruções por voz"><svg class="icon icon-md"><use href="#mr-voice-on"></use></svg></button>
      <button id="tripRecordBtn" class="icon-btn" type="button" title="Gravar minha viagem neste aparelho" aria-pressed="false" aria-label="Iniciar gravação de trajeto"><svg class="icon icon-md"><use href="#mr-record"></use></svg></button>
-     <button id="navigationStopBtn" type="button">Encerrar viagem</button>
+     <button id="navigationStopBtn" type="button"><svg class="icon icon-md" aria-hidden="true"><use href="#mr-flag"></use></svg><span>Encerrar viagem</span></button>
    </div>
  </section>
 </main>
