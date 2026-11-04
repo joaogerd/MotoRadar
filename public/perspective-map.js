@@ -19,7 +19,7 @@
       const element=document.createElement('div');
       element.className='gps-vehicle';
       element.setAttribute('aria-label','Minha moto');
-      element.innerHTML='<svg class="gps-bike" viewBox="0 0 48 52" aria-hidden="true"><path class="bike-outline" d="M9 21q15-8 30 0M16 21h16M17 23v21h14V23Z"/><path class="bike-body" d="M20 17h8l5 11-5 15H20l-5-15z"/><circle class="bike-helmet" cx="24" cy="14" r="8"/><path class="bike-visor" d="M18 13q6-4 12 0"/><path class="bike-tail" d="M20 36h8"/></svg>';
+      element.innerHTML='<svg class="gps-bike" viewBox="0 0 48 52" aria-hidden="true"><ellipse class="bike-tire" cx="24" cy="7" rx="5" ry="6"/><path class="bike-handlebar" d="M10 19H38"/><circle class="bike-mirror" cx="8" cy="19" r="3.5"/><circle class="bike-mirror" cx="40" cy="19" r="3.5"/><path class="bike-body" d="M19 22h10l5 12-5 12H19l-5-12z"/><circle class="bike-helmet" cx="24" cy="18" r="8"/><path class="bike-visor" d="M19 17q5-4 10 0"/><ellipse class="bike-tire" cx="24" cy="47" rx="5" ry="4"/><path class="bike-tail" d="M19 39h10"/></svg>';
       try{bikeMarker=new engine.Marker({element,anchor:'center',rotationAlignment:'viewport'}).setLngLat([latest.lng,latest.lat]).addTo(map);}
       catch(_){bikeMarker=null;}
     }
