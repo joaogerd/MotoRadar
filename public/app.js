@@ -37,6 +37,7 @@
   let toastTimeout;
   let historyRecorder=null;
   let stopsClient=null;
+  const weatherMonitor={scanning:false,lastScanAt:0,lastVoiceAt:0,optedIn:false,lastMessage:''};
   const pointLabel = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
   const unit = (p) => p ? `${p.lat},${p.lng}` : '';
@@ -395,6 +396,34 @@
     toast(state.stops.length?'O Waze abrirá apenas a primeira parada. Depois, abra o próximo trecho.':'Abrindo o destino no Waze.');
     window.open(`https://waze.com/ul?ll=${encodeURIComponent(unit(next))}&navigate=yes`,'_blank','noopener');
   }
+  async function analyzeRadarAhead(auto=false){
+    if(weatherMonitor.scanning)return;
+    if(auto && (!weatherMonitor.optedIn||!state.nav.active||Date.now()-weatherMonitor.lastScanAt<300000))return;
+    const msg=$('radarAheadStatus');
+    const point=state.gpsPoint;
+    const frame=state.frames.at(-1);
+    if(!point||!state.routeData?.geometry?.coordinates){if(!auto)msg.textContent='Ative o GPS e calcule uma rota antes de analisar o radar.';return;}
+    if(!frame||!state.radarHost){msg.textContent='Mosaico de radar indisponível.';return;}
+    const age=ageMinutes(frame.time);
+    if(age>30){msg.textContent=`Radar desatualizado (${age} min); análise de ecos suspensa.`;return;}
+    if(!window.MotoWeather){msg.textContent='Módulo de análise indisponível.';return;}
+    const samples=MotoWeather.sampleForward(state.routeData.geometry.coordinates,point,{metersAhead:30000,stepMeters:2000});
+    if(!samples.length){msg.textContent='A moto está fora da rota ou não há geometria à frente suficiente para uma análise.';return;}
+    weatherMonitor.scanning=true;weatherMonitor.lastScanAt=Date.now();if(!auto)msg.textContent='Amostrando ecos no mosaico histórico…';
+    try{const result=await MotoWeather.analyze(samples,state.radarHost,frame.path);
+      let message;
+      if(result.status==='echo'){
+        const km=(result.firstDistanceMeters/1000).toLocaleString('pt-BR',{maximumFractionDigits:1});
+        message=`Eco no mosaico histórico, próximo à rota, a cerca de ${km} km da posição. Imagem de ${age} min; sem nowcasting. Reconheça as limitações de cobertura.`;
+        if(auto && age<=20 && result.firstDistanceMeters>=1000 && Date.now()-weatherMonitor.lastVoiceAt>=600000){
+          weatherMonitor.lastVoiceAt=Date.now();voice(`Atenção: eco de precipitação detectado no mosaico histórico a aproximadamente ${Math.round(result.firstDistanceMeters/1000)} quilômetros ao longo da rota. Verifique as condições.`);
+        }
+      }else if(result.status==='indeterminate')message=`Nenhum eco amostrado na resolução disponível. Isso NÃO confirma céu limpo ou cobertura do radar. Imagem de ${age} min.`;
+      else message='Não foi possível analisar os pixels do radar (acesso, CORS ou limite de tiles). A visualização normal do mosaico permanece disponível.';
+      msg.textContent=message;weatherMonitor.lastMessage=result.status==='echo'?` • eco indicativo`:' ';
+    }catch(error){msg.textContent='Análise indisponível. Confira a internet e o acesso à imagem do radar.';}
+    finally{weatherMonitor.scanning=false;}
+  }
   function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); }
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
@@ -485,6 +514,7 @@
     }
     state.nav.lastFixAt=Date.now();state.nav.lastAccuracy=accuracy;state.nav.latestPosition=pos;
     renderPins();$('gpsFloatingBtn').classList.add('active');handleNavPosition(p,pos);
+    if(weatherMonitor.optedIn && state.nav.active)analyzeRadarAhead(true);
   }
   function enableGPS(useAsOrigin=false){if(useAsOrigin){state.origin.gps=true;state.origin.point=state.gpsPoint;state.origin.label='Sua localização atual';removeOldRoute();$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');persist();}
     if(!navigator.geolocation){toast('Este navegador não oferece localização. Digite uma origem.');return;}
@@ -528,10 +558,13 @@
     $('radarPrevBtn').onclick=()=>{stopRadarAnimation();displayRadarFrame(state.frameIndex-1);};
     $('radarNextBtn').onclick=()=>{stopRadarAnimation();displayRadarFrame(state.frameIndex+1);};
     $('radarPlayBtn').onclick=toggleRadarAnimation;$('radarRefreshBtn').onclick=updateRadar;
+    $('radarAheadBtn').onclick=()=>analyzeRadarAhead(false);$('radarAlertOptIn').onchange=e=>{weatherMonitor.optedIn=!!e.target.checked;try{localStorage.setItem('motoradar-weather-optin-v1',String(weatherMonitor.optedIn));}catch(_){};};
   }
   function init(){if(typeof L==='undefined'){toast('O mapa não carregou. Confira sua conexão.');return;}
     try{stopsClient=window.MotoStops?.createClient();}catch(e){console.warn('Pontos de apoio indisponíveis',e);}
     try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
+    try{weatherMonitor.optedIn=localStorage.getItem('motoradar-weather-optin-v1')==='true';}catch(_){}
+    $('radarAlertOptIn').checked=weatherMonitor.optedIn;
     restore();initMap();renderStops();$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
