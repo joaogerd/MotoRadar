@@ -40,15 +40,18 @@
   }
   function instructionFor(step, stopName) {
     const m=step?.maneuver||{}, type=m.type||'continue';
-    const street=String(step?.name||'').trim();
+    const street=String(step?.name||step?.ref||'').trim().slice(0,90);
+    const destinations=String(step?.destinations||'').split(';').map(v=>v.trim()).filter(Boolean).slice(0,2).join(' ou ').slice(0,90);
     const onto=street ? ` na ${street}` : '';
     if(type==='arrive')return stopName ? `Você chegou a ${stopName}` : 'Você chegou ao destino';
     if(type==='depart')return `Siga${onto || ' em frente'}`;
     if(['roundabout','rotary','roundabout turn'].includes(type)) {
       const exit=Number(m.exit);
-      return `Entre na rotatória${exit>0?` e pegue a ${exit}ª saída`:''}${onto}`;
+      const ordinal=['','primeira','segunda','terceira','quarta','quinta','sexta','sétima','oitava','nona','décima'][exit]||`${exit}ª`;
+      return `Entre na rotatória${exit>0?` e pegue a ${ordinal} saída`:''}${onto}`;
     }
-    if(['merge','on ramp','off ramp'].includes(type))return `Pegue o acesso ${dir(m.modifier)}${onto}`;
+    if(type==='off ramp')return `Pegue a saída ${dir(m.modifier)}${destinations?` para ${destinations}`:''}${street?` pela ${street}`:''}`;
+    if(['merge','on ramp'].includes(type))return `Pegue o acesso ${dir(m.modifier)}${onto}${destinations?` sentido ${destinations}`:''}`;
     if(type==='fork')return `Mantenha-se ${dir(m.modifier)}${onto}`;
     if(type==='end of road')return `No fim da via, vire ${dir(m.modifier)}${onto}`;
     if(m.modifier==='uturn')return `Faça o retorno${onto}`;
@@ -136,9 +139,9 @@
       const instruction=next?instructionFor(next.step,next.label):'Siga a rota';
       const speak=[];
       if(next && !ended && !offRoute) {
-        const phase=maneuverMeters<=75?'agora':maneuverMeters<=500?'breve':'longe';
+        const phase=maneuverMeters<=75?'agora':maneuverMeters<=600?'breve':maneuverMeters<=1200?'antecipar':'distante';
         const id=`${next.index}:${phase}`;
-        if(id!==lastPrompt && (phase!=='longe'||progress===0)){
+        if(id!==lastPrompt && phase!=='distante'){
           speak.push(phase==='agora'?instruction:`Em ${fmt(maneuverMeters)}, ${instruction.charAt(0).toLowerCase()+instruction.slice(1)}`);
           lastPrompt=id;
         }
