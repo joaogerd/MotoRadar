@@ -42,8 +42,8 @@ def test_navigation_dynamic_arrows_voice_and_stop_controls_are_svg():
 
 def test_icon_asset_release_is_versioned():
     html = (ROOT / 'public/index.html').read_text()
-    assert 'app.css?v=14' in html and 'app.js?v=14' in html
-    assert 'motoradar-shell-v15' in (ROOT / 'public/sw.js').read_text()
+    assert 'app.css?v=15' in html and 'app.js?v=15' in html
+    assert 'motoradar-shell-v16' in (ROOT / 'public/sw.js').read_text()
 
 def test_navigation_visual_system_v11():
     html=(ROOT/'public/index.html').read_text()

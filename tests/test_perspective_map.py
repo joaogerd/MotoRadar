@@ -24,7 +24,7 @@ console.log(JSON.stringify({pitch:opts.pitch,bearing:moves.at(-1).bearing,offset
 
 def test_mode_is_optional_and_does_not_replace_2d_route():
  html=(ROOT/'index.html').read_text();app=(ROOT/'app.js').read_text()
- assert 'perspective-map.js?v=14' in html
+ assert 'perspective-map.js?v=15' in html
  assert 'perspectiveMap' in html and 'navigation3dBtn' in html
  assert 'togglePerspective' in app
  assert 'L.map(' in app
@@ -36,3 +36,21 @@ def test_3d_visual_casing_and_bike_marker_fallback():
     assert "id:'route-line'" in text
     assert "class=\"gps-bike\"" in text
     assert "if(!bikeMarker)map.addLayer" in text
+
+
+def test_maplibre_v6_esm_loader_is_retryable():
+    app=(ROOT/'app.js').read_text()
+    assert 'maplibre-gl.mjs' in app, 'MapLibre v6 só fornece módulos ES'
+    assert 'await import(' in app
+    assert 'maplibre-gl.js' not in app, 'Não carregar bundle UMD inexistente'
+    assert "perspectiveEnginePromise=null" in app, 'Uma falha de rede deve permitir tentar novamente'
+
+
+def test_navigation_notifications_do_not_obscure_maneuvers():
+    html=(ROOT/'index.html').read_text()
+    app=(ROOT/'app.js').read_text()
+    css=(ROOT/'app.css').read_text()
+    assert 'id="tripNotice"' in html
+    assert 'aria-live="polite"' in html
+    assert "$('tripNotice')" in app
+    assert '.trip-notice' in css
