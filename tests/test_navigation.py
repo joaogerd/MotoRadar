@@ -142,6 +142,14 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
             assert page.locator('#routePanel').is_hidden() or page.locator('#routePanel').evaluate('(el)=>el.classList.contains("minimized")')
             assert page.locator('#tripDashboard').is_visible()
+            assert page.locator('#navigationBrand').is_visible()
+            metrics_columns=page.locator('#tripMetrics').evaluate('(el)=>getComputedStyle(el).gridTemplateColumns.trim().split(/\\s+/).length')
+            assert metrics_columns == 2, 'O painel de métricas deve ter duas colunas legíveis'
+            banner=page.locator('#navigationPanel').bounding_box()
+            dashboard=page.locator('#tripDashboard').bounding_box()
+            assert banner['y']+banner['height']+65 < dashboard['y'], 'O mapa deve ter área livre entre os painéis'
+            action=page.locator('#navigationStopBtn').bounding_box()
+            assert action['height']>=48, 'O controle crítico deve ter alvo de toque adequado'
             assert page.locator('#tripSpeed').inner_text() == '43'
             # A camera deve acompanhar cada fix GPS e posicionar a moto abaixo do centro.
             first_views=page.evaluate('window.__mapViews.slice()')

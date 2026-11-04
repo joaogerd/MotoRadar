@@ -7,13 +7,23 @@
   if(!engine?.Map||!initial||!Array.isArray(route?.coordinates))throw Error('Motor 3D ou rota indisponível');
   const style={version:8,sources:{osm:{type:'raster',tiles:[OSM],tileSize:256,attribution:'© OpenStreetMap contributors'}},layers:[{id:'osm-base',type:'raster',source:'osm'}]};
   const map=new engine.Map({container,style,center:[initial.lng,initial.lat],zoom:16.4,pitch:55,bearing:0,attributionControl:true});
-  let ready=false,latest=initial,latestHeading=0,geometry=route,radarUrlValue='',radarOpacity=.65;
+  let ready=false,latest=initial,latestHeading=0,geometry=route,radarUrlValue='',radarOpacity=.65,bikeMarker=null;
   function addCore(){
     if(ready)return;ready=true;
     map.addSource('route',{type:'geojson',data:geometry});
-    map.addLayer({id:'route-line',type:'line',source:'route',paint:{'line-color':'#166fd4','line-width':7,'line-opacity':.96}});
+    map.addLayer({id:'route-casing',type:'line',source:'route',paint:{'line-color':'#ffffff','line-width':11,'line-opacity':.98}});
+    map.addLayer({id:'route-line',type:'line',source:'route',paint:{'line-color':'#0d6efd','line-width':7,'line-opacity':.98}});
     map.addSource('gps',{type:'geojson',data:geoPoint(latest)});
-    map.addLayer({id:'gps-marker',type:'circle',source:'gps',paint:{'circle-radius':10,'circle-color':'#267cea','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
+    // A mesma silhueta de motocicleta é exibida no 3D; fallback pontual sem WebGL/DOM.
+    if(typeof engine.Marker==='function'&&typeof document!=='undefined'){
+      const element=document.createElement('div');
+      element.className='gps-vehicle';
+      element.setAttribute('aria-label','Minha moto');
+      element.innerHTML='<svg class="gps-bike" viewBox="0 0 48 52" aria-hidden="true"><path class="bike-outline" d="M9 21q15-8 30 0M16 21h16M17 23v21h14V23Z"/><path class="bike-body" d="M20 17h8l5 11-5 15H20l-5-15z"/><circle class="bike-helmet" cx="24" cy="14" r="8"/><path class="bike-visor" d="M18 13q6-4 12 0"/><path class="bike-tail" d="M20 36h8"/></svg>';
+      try{bikeMarker=new engine.Marker({element,anchor:'center',rotationAlignment:'viewport'}).setLngLat([latest.lng,latest.lat]).addTo(map);}
+      catch(_){bikeMarker=null;}
+    }
+    if(!bikeMarker)map.addLayer({id:'gps-marker',type:'circle',source:'gps',paint:{'circle-radius':10,'circle-color':'#267cea','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
     if(radarUrlValue)applyRadar();
   }
   function applyRadar(){if(!ready)return;
@@ -30,13 +40,14 @@
     latest=point;if(Number.isFinite(heading))latestHeading=heading;
     if(!ready)return;
     map.getSource?.('gps')?.setData?.(geoPoint(latest));
+    bikeMarker?.setLngLat?.([latest.lng,latest.lat]);
     const height=map.getContainer?.()?.clientHeight||700;
     const offset=Number.isFinite(focusY)?focusY-height/2:Math.min(160,Math.max(55,height*.16));
     map.easeTo({center:[latest.lng,latest.lat],bearing:latestHeading,pitch:55,zoom:16.4,offset:[0,offset],duration:450,essential:true});
   }
   function setRoute(next){if(!Array.isArray(next?.coordinates))return;geometry=next;if(ready)map.getSource?.('route')?.setData?.(geometry);}
   function setRadar(url,opacity=.65){radarUrlValue=url||'';radarOpacity=Math.max(0,Math.min(1,Number(opacity)||0));applyRadar();}
-  function destroy(){map.remove();}
+  function destroy(){bikeMarker?.remove?.();map.remove();}
   return {update,setRoute,setRadar,destroy};
  }
  return {createView};

@@ -28,3 +28,11 @@ def test_mode_is_optional_and_does_not_replace_2d_route():
  assert 'perspectiveMap' in html and 'navigation3dBtn' in html
  assert 'togglePerspective' in app
  assert 'L.map(' in app
+
+
+def test_3d_visual_casing_and_bike_marker_fallback():
+    text=(ROOT/'perspective-map.js').read_text()
+    assert "id:'route-casing'" in text
+    assert "id:'route-line'" in text
+    assert "class=\"gps-bike\"" in text
+    assert "if(!bikeMarker)map.addLayer" in text

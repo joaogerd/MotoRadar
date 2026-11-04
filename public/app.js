@@ -164,7 +164,7 @@
   function showRoute(route){
     removeRouteLayers();state.routeData=route;perspective?.setRoute(route.geometry);
     const base=L.geoJSON(route.geometry,{style:{color:'#ffffff',weight:10,opacity:.95}}).addTo(state.map);
-    const front=L.geoJSON(route.geometry,{style:{color:'#1479db',weight:6,opacity:.95}}).addTo(state.map);
+    const front=L.geoJSON(route.geometry,{style:{color:'#0d6efd',weight:7,opacity:.95}}).addTo(state.map);
     state.routeLayer={getBounds:()=>base.getBounds(),layers:[base,front]};
   }
   // O servidor público OSRM é para demonstração: jamais consultar mais de uma vez por segundo.
