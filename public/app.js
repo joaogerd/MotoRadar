@@ -451,6 +451,21 @@
     }catch(error){msg.textContent='Análise indisponível. Confira a internet e o acesso à imagem do radar.';}
     finally{weatherMonitor.scanning=false;}
   }
+  async function analyzeEchoMotion(){
+    const el=$('radarMotionStatus');
+    const a=state.frames.at(-2),b=state.frames.at(-1);
+    const point=state.gpsPoint || state.map?.getCenter?.();
+    if(!a||!b||!point||!window.MotoEchoMotion||!window.MotoWeather){el.textContent='São necessários dois quadros de radar e uma posição no mapa.';return;}
+    const age=ageMinutes(b.time);
+    if(age>30){el.textContent=`Radar com ${age} min de idade: tendência suspensa.`;return;}
+    $('radarMotionBtn').disabled=true;el.textContent='Comparando ecos históricos próximos ao centro do mapa…';
+    try{const result=await MotoEchoMotion.analyzeFrames(point,state.radarHost,a,b,MotoWeather);
+      if(result.status!=='motion'){el.textContent=`Movimento não estimado (${result.reason}). Não indica ausência de chuva.`;return;}
+      const compass=['N','NE','L','SE','S','SO','O','NO'][Math.round(result.bearingDeg/45)%8];
+      el.textContent=`Deslocamento visual aparente para ${compass}, cerca de ${Math.round(result.speedKmH)} km/h entre quadros históricos. Amostra grosseira (zoom 7); NÃO é nowcasting nem alerta de segurança.`;
+    }catch(_){el.textContent='Comparação indisponível; confira acesso CORS ao radar.';}
+    finally{$('radarMotionBtn').disabled=false;}
+  }
   function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); }
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
@@ -588,6 +603,7 @@
     $('radarPrevBtn').onclick=()=>{stopRadarAnimation();displayRadarFrame(state.frameIndex-1);};
     $('radarNextBtn').onclick=()=>{stopRadarAnimation();displayRadarFrame(state.frameIndex+1);};
     $('radarPlayBtn').onclick=toggleRadarAnimation;$('radarRefreshBtn').onclick=updateRadar;
+    $('radarMotionBtn').onclick=analyzeEchoMotion;
     $('radarAheadBtn').onclick=()=>analyzeRadarAhead(false);$('radarAlertOptIn').onchange=e=>{weatherMonitor.optedIn=!!e.target.checked;try{localStorage.setItem('motoradar-weather-optin-v1',String(weatherMonitor.optedIn));}catch(_){};};
   }
   function init(){if(typeof L==='undefined'){toast('O mapa não carregou. Confira sua conexão.');return;}
