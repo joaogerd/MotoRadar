@@ -36,3 +36,21 @@ def test_3d_visual_casing_and_bike_marker_fallback():
     assert "id:'route-line'" in text
     assert "class=\"gps-bike\"" in text
     assert "if(!bikeMarker)map.addLayer" in text
+
+
+def test_maplibre_v6_esm_loader_is_retryable():
+    app=(ROOT/'app.js').read_text()
+    assert 'maplibre-gl.mjs' in app, 'MapLibre v6 só fornece módulos ES'
+    assert 'await import(' in app
+    assert 'maplibre-gl.js' not in app, 'Não carregar bundle UMD inexistente'
+    assert "perspectiveEnginePromise=null" in app, 'Uma falha de rede deve permitir tentar novamente'
+
+
+def test_navigation_notifications_do_not_obscure_maneuvers():
+    html=(ROOT/'index.html').read_text()
+    app=(ROOT/'app.js').read_text()
+    css=(ROOT/'app.css').read_text()
+    assert 'id="tripNotice"' in html
+    assert 'aria-live="polite"' in html
+    assert "$('tripNotice')" in app
+    assert '.trip-notice' in css
