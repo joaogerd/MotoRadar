@@ -473,7 +473,7 @@
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
   function ageMinutes(epoch){return Math.max(0,Math.round(Date.now()/60000-epoch/60));}
-  function refreshRadarBadge(){if(!state.frames.length)return;const frame=state.frames[state.frameIndex];const age=ageMinutes(frame.time);$('radarAge').textContent=`Radar ${frameTime(frame.time)} · ${age} min atrás`;$('tripRadarStatus').textContent=`Radar ${frameTime(frame.time)} · ${age} min`; $('tripRadarStatus').classList.toggle('stale',age>30);$('radarFrameTime').textContent=frameTime(frame.time);$('radarDot').classList.toggle('old',age>30);$('radarTimeline').value=state.frameIndex;}
+  function refreshRadarBadge(){if(!state.frames.length)return;const frame=state.frames[state.frameIndex];const age=ageMinutes(frame.time);$('radarAge').textContent=`Radar ${frameTime(frame.time)} · ${age} min atrás`;$('tripRadarText').textContent=`Radar ${frameTime(frame.time)} · ${age} min`; $('tripRadarStatus').classList.toggle('stale',age>30);$('radarFrameTime').textContent=frameTime(frame.time);$('radarDot').classList.toggle('old',age>30);$('radarTimeline').value=state.frameIndex;}
   function radarTileUrl(frame){return state.radarHost+frame.path+`/512/{z}/{x}/{y}/${RAINVIEWER_COLOR}/1_1.png`;}
   function displayRadarFrame(i){if(!state.frames.length)return;state.frameIndex=Math.max(0,Math.min(i,state.frames.length-1));if(state.radarLayer)state.map.removeLayer(state.radarLayer);
     state.radarLayer=L.tileLayer(radarTileUrl(state.frames[state.frameIndex]),{tileSize:256,opacity:state.opacity,maxNativeZoom:7,maxZoom:18,attribution:'Radar: <a href="https://www.rainviewer.com/">RainViewer</a>',updateWhenIdle:true});
@@ -484,7 +484,7 @@
     const obj=await resp.json();if(!obj.host||!obj.radar?.past?.length)throw Error('Sem mosaicos');
     const frames=obj.radar.past.slice(-6);if(frames.at(-1)?.time===state.frames.at(-1)?.time)return;
     stopRadarAnimation();state.radarHost=obj.host.replace(/\/$/,'');state.frames=frames;$('radarTimeline').max=frames.length-1;$('radarTimeline').disabled=false;displayRadarFrame(frames.length-1);$('radarDot').classList.remove('error');
-  }catch(err){console.warn('Radar indisponível',err);if(!state.frames.length){$('radarAge').textContent='Radar indisponível';$('tripRadarStatus').textContent='Radar indisponível';$('tripRadarStatus').classList.add('stale');$('radarDot').classList.add('error');}else{$('radarAge').textContent+=' • sem atualização';$('tripRadarStatus').textContent+=' • sem atualização';$('tripRadarStatus').classList.add('stale');$('radarDot').classList.add('old');}}
+  }catch(err){console.warn('Radar indisponível',err);if(!state.frames.length){$('radarAge').textContent='Radar indisponível';$('tripRadarText').textContent='Radar indisponível';$('tripRadarStatus').classList.add('stale');$('radarDot').classList.add('error');}else{$('radarAge').textContent+=' • sem atualização';$('tripRadarText').textContent+=' • sem atualização';$('tripRadarStatus').classList.add('stale');$('radarDot').classList.add('old');}}
   }
   function stopRadarAnimation(){clearInterval(state.animation);state.animation=null;$('radarPlayBtn').textContent='▶';}
   function toggleRadarAnimation(){if(state.animation){stopRadarAnimation();return;}if(!state.frames.length)return;
@@ -550,7 +550,7 @@
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
     const shown=snap.matched?L.latLng(snap.point.lat,snap.point.lng):p;
-    const icon=L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],html:'<div class="gps-pin"></div>'});
+    const icon=L.divIcon({className:'',iconSize:[40,44],iconAnchor:[20,22],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-vehicle-arrow" viewBox="0 0 40 44"><path d="M20 2 37 40 20 32 3 40Z"/></svg></div>'});
     if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0);}
