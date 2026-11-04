@@ -142,6 +142,14 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
             assert page.locator('#routePanel').is_hidden() or page.locator('#routePanel').evaluate('(el)=>el.classList.contains("minimized")')
             assert page.locator('#tripDashboard').is_visible()
+            # A falha simulada do CDN 3D não deve ocultar a próxima conversão.
+            page.locator('#navigation3dBtn').click()
+            page.locator('#tripNotice').wait_for(state='visible',timeout=12000)
+            assert page.locator('#navigationPanel').is_visible()
+            assert page.locator('#navigationInstruction').is_visible()
+            assert page.locator('#toast').is_hidden()
+            assert page.locator('#perspectiveMap').is_hidden()
+            assert page.locator('#navigation3dBtn').get_attribute('aria-pressed') == 'false'
             assert page.locator('#navigationBrand').is_visible()
             metrics_columns=page.locator('#tripMetrics').evaluate('(el)=>getComputedStyle(el).gridTemplateColumns.trim().split(/\\s+/).length')
             assert metrics_columns == 2, 'O painel de métricas deve ter duas colunas legíveis'
