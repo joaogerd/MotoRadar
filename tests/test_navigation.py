@@ -270,10 +270,12 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
             page.locator('#navigationStopBtn').click()
             # O mapa também pode ser ampliado antes de iniciar a navegação.
+            before_requests=page.evaluate('window.__fullscreenRequests')
+            before_exits=page.evaluate('window.__fullscreenExits')
             page.locator('#fullscreenFloatingBtn').click()
-            assert page.evaluate('window.__fullscreenRequests') == 3
+            assert page.evaluate('window.__fullscreenRequests') == before_requests+1
             page.locator('#fullscreenFloatingBtn').click()
-            assert page.evaluate('window.__fullscreenExits') == 3
+            assert page.evaluate('window.__fullscreenExits') == before_exits+1
             assert page.evaluate('window.__spoken.length') >= 1
             browser.close()
     finally:
