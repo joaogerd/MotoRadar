@@ -349,6 +349,9 @@
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
     nav.waiting=true;nav.building=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
+    // A preferência precisa refletir no mapa já ao tocar em Iniciar, mesmo
+    // enquanto esperamos por um primeiro GPS com precisão suficiente.
+    setNavigationPerspective(navigationViewPreference,false);
     setTripPanelCompact(false,false);
     $('tripSpeed').textContent='—';$('tripDistance').textContent='—';$('tripArrival').textContent='—';$('tripDuration').textContent='—';
     navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
