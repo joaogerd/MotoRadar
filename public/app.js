@@ -681,7 +681,8 @@
   function enableGPS(useAsOrigin=false){if(useAsOrigin){state.origin.gps=true;state.origin.point=state.gpsPoint;state.origin.label='Sua localização atual';removeOldRoute();$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');persist();}
     if(!navigator.geolocation){toast('Este navegador não oferece localização. Digite uma origem.');return;}
     if(!window.isSecureContext){toast('Abra a página em HTTPS para usar GPS.');return;}
-    setFollow(true);if(state.gpsPoint && !state.nav.active)state.map.setView(state.gpsPoint,Math.max(12,state.map.getZoom()));
+    // Quando estamos iniciando viagem, deixar o flyTo fazer pan/zoom suave até o GPS.
+    setFollow(true);if(state.gpsPoint && !state.nav.active && !state.nav.waiting && !state.nav.building)state.map.setView(state.gpsPoint,Math.max(12,state.map.getZoom()));
     if(state.gpsWatch===null)state.gpsWatch=navigator.geolocation.watchPosition(updateGPS,gpsError,{enableHighAccuracy:true,timeout:18000,maximumAge:12000});
     if(useAsOrigin&&!state.gpsPoint)toast('Solicitando permissão de localização…');
   }
