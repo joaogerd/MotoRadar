@@ -54,3 +54,23 @@ def test_navigation_notifications_do_not_obscure_maneuvers():
     assert 'aria-live="polite"' in html
     assert "$('tripNotice')" in app
     assert '.trip-notice' in css
+
+
+def test_25d_option_is_renderer_independent():
+    html=(ROOT/'index.html').read_text()
+    css=(ROOT/'app.css').read_text()
+    app=(ROOT/'app.js').read_text()
+    assert 'Perspectiva 2,5D' in html
+    assert 'mr-pseudo3d' in css
+    assert 'perspective(' in css and 'rotateX(' in css
+    assert 'pointer-events:none' in css
+    assert 'pseudo3d' in app
+    assert "function togglePerspective()" in app
+
+
+def test_25d_preserves_maneuver_panel_and_2d_map():
+    app=(ROOT/'app.js').read_text()
+    assert "setFollow(true)" in app
+    assert "refreshNavigationCamera()" in app
+    assert "map.classList" not in app or "mr-pseudo3d" in app
+    assert "L.map(" in app
