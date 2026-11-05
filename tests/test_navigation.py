@@ -256,15 +256,8 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page.locator('#startNavigationBtn').click()
             page.locator('#navigationPanel').wait_for(state='visible',timeout=12000)
             page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
-            view_state=page.evaluate("""() => ({
-                button:document.querySelector('#navigation3dBtn').getAttribute('aria-pressed'),
-                map:document.querySelector('#map').classList.contains('mr-pseudo3d'),
-                selected:document.querySelector('#navigationViewPreference').value,
-                saved:window.__savedPrefs['motoradar-navigation-view-v1'],
-                instruction:document.querySelector('#navigationInstruction').textContent
-            })""")
-            assert view_state['button'] == 'false', view_state
-            assert view_state['map'] is False, view_state
+            assert page.locator('#navigation3dBtn').get_attribute('aria-pressed') == 'false'
+            assert not page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
             page.locator('#navigationStopBtn').click()
             # Alteração explícita em Configurações muda a visão da próxima viagem.
             page.locator('#settingsBtn').click()

@@ -270,7 +270,7 @@
     nav.building=true;nav.waiting=false;const id=++nav.requestId;
     // Com uma posição GPS válida, aproximar a câmera já durante o recálculo da rota.
     // A visualização preferida entra automaticamente sem exigir outro toque.
-    setNavigationPerspective(navigationViewPreference,false);
+    setNavigationPerspective(navigationViewPreference==='2.5d',false);
     zoomToStartGPS(current);
     navigationStatus('Calculando rota a partir do GPS…');
     try{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),23000);let data;
@@ -351,7 +351,7 @@
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
     // A preferência precisa refletir no mapa já ao tocar em Iniciar, mesmo
     // enquanto esperamos por um primeiro GPS com precisão suficiente.
-    setNavigationPerspective(navigationViewPreference,false);
+    setNavigationPerspective(navigationViewPreference==='2.5d',false);
     setTripPanelCompact(false,false);
     $('tripSpeed').textContent='—';$('tripDistance').textContent='—';$('tripArrival').textContent='—';$('tripDuration').textContent='—';
     navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
