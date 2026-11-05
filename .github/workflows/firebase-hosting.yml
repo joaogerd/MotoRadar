@@ -12,7 +12,9 @@ permissions:
 
 concurrency:
   group: motoradar-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  # Em branches de desenvolvimento, a execução mais recente substitui testes obsoletos.
+  # Nunca cancelar deploys em main ou publicação de prévia em develop.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   tests:
