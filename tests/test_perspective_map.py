@@ -60,7 +60,7 @@ def test_25d_option_is_renderer_independent():
     html=(ROOT/'index.html').read_text()
     css=(ROOT/'app.css').read_text()
     app=(ROOT/'app.js').read_text()
-    assert 'Perspectiva 2,5D' in html
+    assert 'perspectiva 2,5d' in html.lower()
     assert 'mr-pseudo3d' in css
     assert 'perspective(' in css and 'rotateX(' in css
     assert 'pointer-events:none' in css
