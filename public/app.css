@@ -299,3 +299,19 @@ body:has(.navigation-panel:not([hidden])) .navigation-panel{top:calc(env(safe-ar
 }
 .trip-notice[hidden]{display:none!important}
 .trip-dashboard.compact .trip-notice{font-size:11px;padding:6px 8px;margin:4px 0}
+
+
+/* Modo 2,5D: inclinação visual da cena Leaflet inteira, independente de WebGL.
+   Somente no Modo Viagem. Preserva alinhamento de radar, rota e GPS.
+   Interação manual desabilitada para evitar imprecisão de hit testing 3D. */
+#map.mr-pseudo3d{
+  transform-origin:50% 62%;
+  transform:perspective(1100px) rotateX(18deg) scale(1.35);
+  pointer-events:none;
+  backface-visibility:hidden;
+  will-change:transform;
+  transition:transform 240ms ease-out;
+}
+#map.mr-pseudo3d .gps-bike{filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
+.trip-actions #navigation3dBtn[aria-pressed="true"]{background:#dbf0fb;color:#084e7b;border-color:#7dbedb}
+@media(prefers-reduced-motion:reduce){#map.mr-pseudo3d{transition:none}}
