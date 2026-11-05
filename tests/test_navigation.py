@@ -118,7 +118,22 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
                 document.exitFullscreen=function(){window.__fullscreen=null;window.__fullscreenExits++;document.dispatchEvent(new Event('fullscreenchange'));return Promise.resolve()};
                 Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{speak:(u)=>window.__spoken.push(u.text),cancel:()=>{},getVoices:()=>[]}});
                 window.SpeechSynthesisUtterance=function(text){this.text=text;this.lang='pt-BR'};
-                Object.defineProperty(navigator,'geolocation',{configurable:true,value:{watchPosition:(success,fail)=>{window.__gps=success;setTimeout(()=>success({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}}),10);return 77},clearWatch:()=>{}}});
+                window.__watchCalls=0;window.__oneShots=0;
+                const gpsFix=()=>({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12},timestamp:Date.now()});
+                Object.defineProperty(navigator,'geolocation',{configurable:true,value:{
+                  watchPosition:(success,fail)=>{
+                    window.__gps=success;window.__watchCalls++;
+                    // O watchPosition entrega o primeiro fix antes da viagem e não
+                    // chama de novo enquanto a moto permanece imóvel.
+                    if(window.__watchCalls===1)setTimeout(()=>success(gpsFix()),10);
+                    return 77;
+                  },
+                  getCurrentPosition:(success,fail,opts)=>{
+                    window.__oneShots++;window.__oneShotOptions=opts;
+                    setTimeout(()=>success(gpsFix()),10);
+                  },
+                  clearWatch:()=>{}
+                }});
                 const layer=()=>({addTo(){return this},setLatLng(){return this},setRadius(){return this},setOpacity(){return this},getBounds(){return {isValid:()=>true}}});
                 window.L={point:(x,y)=>({x,y}),latLng:(lat,lng)=>({lat,lng,distanceTo(p){return Math.hypot((lat-p.lat)*110000,(lng-p.lng)*105000)}}),divIcon:()=>({}),
                 map:()=>({setView(point,zoom,opts){window.__mapViews.push({lat:point.lat,lng:point.lng,zoom,opts});return this},flyTo(point,zoom,opts){window.__mapFlights.push({lat:point.lat,lng:point.lng,zoom,opts});return this},getZoom(){return 15},getSize(){return {x:390,y:844}},project(pt){return {x:pt.lng*10000,y:pt.lat*10000}},unproject(pt){return {lat:pt.y/10000,lng:pt.x/10000}},setHeading(h){window.__mapHeadings.push(h);return this},stopHeadingUp(){},setBearing(){},on(k,fn){window.__mapHandlers[k]=fn;return this},fitBounds(){return this},removeLayer(){},panTo(){},getBounds(){return {}}}),tileLayer:()=>layer(),marker:()=>layer(),circle:()=>layer(),geoJSON:()=>{window.__lines++;return layer()},polyline:()=>layer()};
@@ -142,7 +157,16 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             page.set_content(html,wait_until='load')
             page.wait_for_function('window.__lines >= 2',timeout=12000)
             assert page.locator('#startNavigationBtn').is_visible()
+            # Reproduzir bug relatado: GPS já foi usado para ver a moto no mapa,
+            # mas não há novas callbacks do watchPosition enquanto estacionada.
+            page.locator('#gpsFloatingBtn').click()
+            page.wait_for_function('window.__watchCalls===1 && !!document.querySelector(".gps-bike")')
+            page.evaluate('''() => { const clock=Date.now;Date.now=()=>clock()+20000; }''')
             page.locator('#startNavigationBtn').click()
+            page.wait_for_function('window.__oneShots>=1',timeout=12000)
+            assert page.evaluate('window.__watchCalls') == 1, 'Não criar watchPosition duplicado'
+            assert page.evaluate('window.__oneShotOptions.enableHighAccuracy') is True
+            assert page.evaluate('window.__oneShotOptions.maximumAge') == 0
             page.locator('#navigationPanel').wait_for(state='visible',timeout=12000)
             page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
