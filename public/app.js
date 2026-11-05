@@ -37,7 +37,7 @@
   let toastTimeout;
   let historyRecorder=null;
   let stopsClient=null;
-  let perspective=null,perspectiveEnginePromise=null;
+  let perspective=null,perspectiveEnginePromise=null,pseudo3d=false;
   const weatherMonitor={scanning:false,lastScanAt:0,lastVoiceAt:0,optedIn:false,lastMessage:''};
   const pointLabel = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
@@ -368,27 +368,35 @@
     return perspectiveEnginePromise;
   }
   function disablePerspective(){
-    if(perspective){try{perspective.destroy();}catch(_){}}perspective=null;$('perspectiveMap').hidden=true;
-    $('navigation3dBtn').setAttribute('aria-pressed','false');
+    // O modo 2,5D inclina a mesma cena Leaflet. Nenhum mapa secundário é necessário.
+    pseudo3d=false;
+    $('map').classList.remove('mr-pseudo3d');
+    if(perspective){try{perspective.destroy();}catch(_){}}perspective=null;
+    $('perspectiveMap').hidden=true;
+    const button=$('navigation3dBtn');
+    button.setAttribute('aria-pressed','false');
+    button.setAttribute('aria-label','Ativar perspectiva 2,5D');
+    button.title='Inclinar mapa (2,5D)';
+    button.querySelector('.action-label').textContent='2,5D';
     if(state.nav.active&&state.gpsPoint&&state.follow)followNavigationCamera(state.gpsPoint);
   }
-  async function togglePerspective(){
-    if(perspective){disablePerspective();return;}
-    if(!state.nav.active||!state.gpsPoint||!state.routeData?.geometry){toast('Inicie a navegação para visualizar a rota em 3D.');return;}
-    $('navigation3dBtn').disabled=true;
-    try{const engine=await loadMapLibre();if(!state.nav.active)return;
-      const container=$('perspectiveMap');container.hidden=false;
-      perspective=window.MotoPerspective.createView(engine,container,state.routeData.geometry,state.gpsPoint,()=>setFollow(false));
-      $('navigation3dBtn').setAttribute('aria-pressed','true');setFollow(true);
-      const frame=state.frames[state.frameIndex];if(frame)perspective.setRadar(state.radarVisible?`${state.radarHost}${frame.path}/512/{z}/{x}/{y}/2/1_1.png`:'',state.opacity);
-      perspective.update(state.gpsPoint,state.nav.cameraHeading||0,visibleNavigationFocusY());
-    }catch(e){
-      disablePerspective();
-      const loadFailure=e?.message==='MAPLIBRE_DOWNLOAD_FAILED';
-      toast(loadFailure?'3D não carregou. Confira a conexão; mapa 2D mantido.':'3D indisponível neste dispositivo. Navegação 2D mantida.');
-      console.warn('Modo 3D indisponível',e);
+  function togglePerspective(){
+    if(!state.nav.active||!state.gpsPoint||!state.routeData?.geometry){
+      toast('Inicie a navegação para usar a perspectiva 2,5D.');return;
     }
-    finally{$('navigation3dBtn').disabled=false;}
+    if(pseudo3d){disablePerspective();return;}
+    // Aplicar ao mapa inteiro conserva alinhamento de radar, rota e marcador.
+    // No modo inclinado, desativamos toque no mapa para não converter gestos
+    // em coordenadas incorretas; retorne ao 2D para explorar manualmente.
+    pseudo3d=true;
+    $('map').classList.add('mr-pseudo3d');
+    const button=$('navigation3dBtn');
+    button.setAttribute('aria-pressed','true');
+    button.setAttribute('aria-label','Voltar ao mapa 2D');
+    button.title='Voltar ao mapa 2D para explorar';
+    button.querySelector('.action-label').textContent='2D';
+    setFollow(true);
+    refreshNavigationCamera();
   }
   function openSupport(){ $('supportPanel').hidden=false;$('supportResults').textContent='Selecione a categoria e pesquise. Não há consulta automática.'; }
   async function searchSupport(){
@@ -546,7 +554,10 @@
     const bottom=$('tripDashboard')?.getBoundingClientRect?.();
     const size=state.map?.getSize?.();
     if(!mapRect||!size||!top||!bottom||$('navigationPanel').hidden||$('tripDashboard').hidden)return null;
-    return MotoNavigation.visibleFocusY(size.y,top.bottom-mapRect.top,bottom.top-mapRect.top);
+    // Um transform CSS altera o boundingRect visual, não o sistema de pixels do Leaflet.
+    // O contêiner é fixed/inset:0; no 2,5D usamos a origem não transformada.
+    const mapTop=pseudo3d?0:mapRect.top;
+    return MotoNavigation.visibleFocusY(size.y,top.bottom-mapTop,bottom.top-mapTop);
   }
   function refreshNavigationCamera(){
     if(!state.nav.active||!state.gpsPoint||!state.follow)return;
