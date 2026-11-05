@@ -12,7 +12,9 @@ permissions:
 
 concurrency:
   group: motoradar-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  # Em branches de desenvolvimento, a execução mais recente substitui testes obsoletos.
+  # Nunca cancelar deploys em main ou publicação de prévia em develop.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 jobs:
   tests:
@@ -29,7 +31,13 @@ jobs:
       - name: Instalar dependências de teste
         run: |
           python -m pip install pytest playwright
-          python -m playwright install --with-deps chromium
+          # Os testes executam /usr/bin/chromium, não o binário baixado pelo Playwright.
+          # Evitar download duplicado de navegador e pacotes de sistema no runner.
+          if [ ! -x /usr/bin/chromium ]; then
+            sudo apt-get update
+            sudo apt-get install -y chromium
+          fi
+          /usr/bin/chromium --version
       - name: Validar sintaxe JavaScript
         run: |
           for file in public/*.js; do node --check "$file"; done

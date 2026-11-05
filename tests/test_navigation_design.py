@@ -55,9 +55,9 @@ def test_actions_are_consistent_and_keep_all_functionality():
 
 def test_release_cache_bumped_consistently():
     html = (ROOT / "index.html").read_text()
-    assert 'app.css?v=16' in html
-    assert 'app.js?v=16' in html
-    assert 'motoradar-shell-v17' in (ROOT / "sw.js").read_text()
+    assert 'app.css?v=17' in html
+    assert 'app.js?v=17' in html
+    assert 'motoradar-shell-v18' in (ROOT / "sw.js").read_text()
 
 
 def test_record_button_preserves_visual_identity_when_toggled():

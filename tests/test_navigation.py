@@ -103,7 +103,13 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
             context=browser.new_context(viewport={'width':390,'height':844})
             context.add_init_script('''
-                window.__mapViews=[];window.__mapHeadings=[];window.__mapHandlers={};
+                window.__mapViews=[];window.__mapFlights=[];window.__mapHeadings=[];window.__mapHandlers={};
+                window.__savedPrefs={};
+                Object.defineProperty(window,'localStorage',{configurable:true,value:{
+                   getItem:(k)=>window.__savedPrefs[k]??null,
+                   setItem:(k,v)=>{window.__savedPrefs[k]=String(v)},
+                   removeItem:(k)=>{delete window.__savedPrefs[k]}
+                }});
                 Object.defineProperty(window,'isSecureContext',{configurable:true,value:true});
                 window.__lines=0;window.__spoken=[];window.__routes=[];
                 window.__fullscreenRequests=0;window.__fullscreenExits=0;window.__fullscreen=null;
@@ -115,7 +121,7 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
                 Object.defineProperty(navigator,'geolocation',{configurable:true,value:{watchPosition:(success,fail)=>{window.__gps=success;setTimeout(()=>success({coords:{latitude:-15.8,longitude:-48,accuracy:9,heading:110,speed:12}}),10);return 77},clearWatch:()=>{}}});
                 const layer=()=>({addTo(){return this},setLatLng(){return this},setRadius(){return this},setOpacity(){return this},getBounds(){return {isValid:()=>true}}});
                 window.L={point:(x,y)=>({x,y}),latLng:(lat,lng)=>({lat,lng,distanceTo(p){return Math.hypot((lat-p.lat)*110000,(lng-p.lng)*105000)}}),divIcon:()=>({}),
-                map:()=>({setView(point,zoom,opts){window.__mapViews.push({lat:point.lat,lng:point.lng,zoom,opts});return this},getZoom(){return 15},getSize(){return {x:390,y:844}},project(pt){return {x:pt.lng*10000,y:pt.lat*10000}},unproject(pt){return {lat:pt.y/10000,lng:pt.x/10000}},setHeading(h){window.__mapHeadings.push(h);return this},stopHeadingUp(){},setBearing(){},on(k,fn){window.__mapHandlers[k]=fn;return this},fitBounds(){return this},removeLayer(){},panTo(){},getBounds(){return {}}}),tileLayer:()=>layer(),marker:()=>layer(),circle:()=>layer(),geoJSON:()=>{window.__lines++;return layer()},polyline:()=>layer()};
+                map:()=>({setView(point,zoom,opts){window.__mapViews.push({lat:point.lat,lng:point.lng,zoom,opts});return this},flyTo(point,zoom,opts){window.__mapFlights.push({lat:point.lat,lng:point.lng,zoom,opts});return this},getZoom(){return 15},getSize(){return {x:390,y:844}},project(pt){return {x:pt.lng*10000,y:pt.lat*10000}},unproject(pt){return {lat:pt.y/10000,lng:pt.x/10000}},setHeading(h){window.__mapHeadings.push(h);return this},stopHeadingUp(){},setBearing(){},on(k,fn){window.__mapHandlers[k]=fn;return this},fitBounds(){return this},removeLayer(){},panTo(){},getBounds(){return {}}}),tileLayer:()=>layer(),marker:()=>layer(),circle:()=>layer(),geoJSON:()=>{window.__lines++;return layer()},polyline:()=>layer()};
             ''')
             def intercept(route):
                 url=route.request.url
@@ -142,7 +148,18 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
             assert page.locator('#routePanel').is_hidden() or page.locator('#routePanel').evaluate('(el)=>el.classList.contains("minimized")')
             assert page.locator('#tripDashboard').is_visible()
-            # Perspectiva 2,5D usa o Leaflet existente, sem MapLibre/WebGL.
+            # Iniciar automaticamente ativa a preferência 2,5D e aproxima o GPS.
+            assert page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
+            assert page.locator('#navigation3dBtn').get_attribute('aria-pressed') == 'true'
+            flights=page.evaluate('window.__mapFlights.slice()')
+            assert flights and flights[0]['zoom'] == 17
+            assert abs(flights[0]['lat']-(-15.8)) < 0.001 and abs(flights[0]['lng']-(-48)) < 0.001
+            assert flights[0]['opts']['duration'] > 0.7
+            assert any(v['zoom']>=17 for v in page.evaluate('window.__mapViews'))
+            # Alternar manualmente define a preferência para as próximas viagens.
+            page.locator('#navigation3dBtn').click()
+            assert not page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
+            assert page.evaluate('window.__savedPrefs["motoradar-navigation-view-v1"]') == '2d'
             page.locator('#navigation3dBtn').click()
             assert page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
             assert page.locator('#navigationPanel').is_visible()
@@ -232,11 +249,33 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             assert page.evaluate('window.__fullscreen') is None
             assert page.evaluate('window.__fullscreenExits') == 2
             assert page.locator('#routeSummary').is_visible()
+            # A preferência 2D salva na viagem anterior deve valer na próxima.
+            page.locator('#settingsBtn').click()
+            assert page.locator('#navigationViewPreference').input_value() == '2d'
+            page.locator('#settingsClose').click()
+            page.locator('#startNavigationBtn').click()
+            page.locator('#navigationPanel').wait_for(state='visible',timeout=12000)
+            page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
+            assert page.locator('#navigation3dBtn').get_attribute('aria-pressed') == 'false'
+            assert not page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
+            page.locator('#navigationStopBtn').click()
+            # Alteração explícita em Configurações muda a visão da próxima viagem.
+            page.locator('#settingsBtn').click()
+            page.locator('#navigationViewPreference').select_option('2.5d')
+            assert page.evaluate('window.__savedPrefs["motoradar-navigation-view-v1"]') == '2.5d'
+            page.locator('#settingsClose').click()
+            page.locator('#startNavigationBtn').click()
+            page.locator('#navigationPanel').wait_for(state='visible',timeout=12000)
+            page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
+            assert page.locator('#map').evaluate('(el)=>el.classList.contains("mr-pseudo3d")')
+            page.locator('#navigationStopBtn').click()
             # O mapa também pode ser ampliado antes de iniciar a navegação.
+            before_requests=page.evaluate('window.__fullscreenRequests')
+            before_exits=page.evaluate('window.__fullscreenExits')
             page.locator('#fullscreenFloatingBtn').click()
-            assert page.evaluate('window.__fullscreenRequests') == 3
+            assert page.evaluate('window.__fullscreenRequests') == before_requests+1
             page.locator('#fullscreenFloatingBtn').click()
-            assert page.evaluate('window.__fullscreenExits') == 3
+            assert page.evaluate('window.__fullscreenExits') == before_exits+1
             assert page.evaluate('window.__spoken.length') >= 1
             browser.close()
     finally:
