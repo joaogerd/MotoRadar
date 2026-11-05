@@ -4,7 +4,7 @@ ROOT=Path(__file__).resolve().parents[1]
 def test_radar_corridor_is_explicit_and_experimental():
     html=(ROOT/'public/index.html').read_text()
     app=(ROOT/'public/app.js').read_text()
-    assert 'weather-corridor.js?v=17' in html
+    assert 'weather-corridor.js?v=18' in html
     for id in ['radarAheadBtn','radarAheadStatus','radarAlertOptIn']:
         assert f'id="{id}"' in html
     assert 'analyzeRadarAhead' in app
