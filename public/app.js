@@ -5,6 +5,8 @@
   const MAX_STOPS = 8;
   const RAINVIEWER_COLOR = 2;
   const key = 'motoradar-route-v03';
+  const NAV_VIEW_KEY = 'motoradar-navigation-view-v1';
+  const NAV_ZOOM = 17;
   // Roteiro turístico definido para a viagem de moto em Brasília (origem = retorno).
   // Coordenadas das atrações publicadas em https://programeviagem.com/roteiros-de-viagem-sugeridos/roteiro-de-viagem-brasilia-e-goias/
   // O endereço do Dok Hotel NÃO é estimado: consultamos o geocodificador e só traçamos a rota se for encontrado.
@@ -37,7 +39,7 @@
   let toastTimeout;
   let historyRecorder=null;
   let stopsClient=null;
-  let perspective=null,perspectiveEnginePromise=null,pseudo3d=false;
+  let perspective=null,perspectiveEnginePromise=null,pseudo3d=false,navigationViewPreference='2.5d';
   const weatherMonitor={scanning:false,lastScanAt:0,lastVoiceAt:0,optedIn:false,lastMessage:''};
   const pointLabel = (p) => `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
   const toPoint = (p) => p ? L.latLng(Number(p.lat), Number(p.lng)) : null;
@@ -45,6 +47,21 @@
   const escapeHtml = (s) => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const svgIcon = (name, cls='') => `<svg class=\"icon ${cls}\" aria-hidden=\"true\"><use href=\"#mr-${name}\"></use></svg>`;
   const navIconName = (symbol) => ({'⚑':'flag-solid','⟳':'turn-roundabout-solid','↶':'turn-uturn-solid','↱':'turn-right-solid','↰':'turn-left-solid','↑':'turn-straight-solid','◎':'target-solid'}[symbol] || 'turn-straight-solid');
+  function restoreNavigationViewPreference(){
+    try {
+      const saved=localStorage.getItem(NAV_VIEW_KEY);
+      if(saved==='2d'||saved==='2.5d')navigationViewPreference=saved;
+    }catch(_){}
+    const input=$('navigationViewPreference');
+    if(input)input.value=navigationViewPreference;
+  }
+  function saveNavigationViewPreference(value){
+    if(value!=='2d'&&value!=='2.5d')return;
+    navigationViewPreference=value;
+    const input=$('navigationViewPreference');
+    if(input)input.value=value;
+    try{localStorage.setItem(NAV_VIEW_KEY,value);}catch(_){}
+  }
   function setVoiceButton(){ const btn=$('navigationVoiceBtn'); if(!btn) return; btn.innerHTML=svgIcon(state.nav.muted?'voice-muted-solid':'voice-solid','icon-md')+'<span class="action-label">Voz</span>'; btn.setAttribute('aria-pressed', String(!state.nav.muted)); }
   function toast(message) {
     const duringNavigation=(state.nav.active||state.nav.waiting)&&!$('tripDashboard').hidden;
@@ -251,6 +268,10 @@
     const nav=state.nav;
     if(!nav.waiting||nav.building)return;
     nav.building=true;nav.waiting=false;const id=++nav.requestId;
+    // Com uma posição GPS válida, aproximar a câmera já durante o recálculo da rota.
+    // A visualização preferida entra automaticamente sem exigir outro toque.
+    setNavigationPerspective(navigationViewPreference,false);
+    zoomToStartGPS(current);
     navigationStatus('Calculando rota a partir do GPS…');
     try{const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),23000);let data;
       try{data=await requestRoute([current,...nav.goals.map(x=>x.point)],controller.signal);}
@@ -367,34 +388,29 @@
     })().catch(error=>{perspectiveEnginePromise=null;throw error;});
     return perspectiveEnginePromise;
   }
+  function setNavigationPerspective(enabled,remember=false){
+    // Mesmo mapa Leaflet em ambos os modos; rota/radar/GPS permanecem alinhados.
+    pseudo3d=!!enabled;
+    $('map').classList.toggle('mr-pseudo3d',pseudo3d);
+    const button=$('navigation3dBtn');
+    button.setAttribute('aria-pressed',String(pseudo3d));
+    button.setAttribute('aria-label',pseudo3d?'Voltar ao mapa 2D':'Ativar perspectiva 2,5D');
+    button.title=pseudo3d?'Voltar ao mapa 2D para explorar':'Inclinar mapa (2,5D)';
+    button.querySelector('.action-label').textContent=pseudo3d?'2D':'2,5D';
+    if(remember)saveNavigationViewPreference(pseudo3d?'2.5d':'2d');
+  }
   function disablePerspective(){
-    // O modo 2,5D inclina a mesma cena Leaflet. Nenhum mapa secundário é necessário.
-    pseudo3d=false;
-    $('map').classList.remove('mr-pseudo3d');
+    setNavigationPerspective(false,false); // Sair da viagem não modifica a preferência.
     if(perspective){try{perspective.destroy();}catch(_){}}perspective=null;
     $('perspectiveMap').hidden=true;
-    const button=$('navigation3dBtn');
-    button.setAttribute('aria-pressed','false');
-    button.setAttribute('aria-label','Ativar perspectiva 2,5D');
-    button.title='Inclinar mapa (2,5D)';
-    button.querySelector('.action-label').textContent='2,5D';
     if(state.nav.active&&state.gpsPoint&&state.follow)followNavigationCamera(state.gpsPoint);
   }
   function togglePerspective(){
     if(!state.nav.active||!state.gpsPoint||!state.routeData?.geometry){
       toast('Inicie a navegação para usar a perspectiva 2,5D.');return;
     }
-    if(pseudo3d){disablePerspective();return;}
-    // Aplicar ao mapa inteiro conserva alinhamento de radar, rota e marcador.
-    // No modo inclinado, desativamos toque no mapa para não converter gestos
-    // em coordenadas incorretas; retorne ao 2D para explorar manualmente.
-    pseudo3d=true;
-    $('map').classList.add('mr-pseudo3d');
-    const button=$('navigation3dBtn');
-    button.setAttribute('aria-pressed','true');
-    button.setAttribute('aria-label','Voltar ao mapa 2D');
-    button.title='Voltar ao mapa 2D para explorar';
-    button.querySelector('.action-label').textContent='2D';
+    // Um toque alterna a visualização e define o padrão das próximas viagens.
+    setNavigationPerspective(!pseudo3d,true);
     setFollow(true);
     refreshNavigationCamera();
   }
@@ -548,6 +564,13 @@
   }
   function toggleRadar(on){state.radarVisible=on;$('radarVisibleBtn').textContent=on?'Ligado':'Desligado';$('radarVisibleBtn').classList.toggle('on',on);$('radarVisibleBtn').setAttribute('aria-pressed',String(on));if(state.radarLayer){if(on)state.radarLayer.addTo(state.map);else state.map.removeLayer(state.radarLayer);}}
   function toggleCoverage(on){state.coverage=on;$('radarCoverageBtn').textContent=on?'Ligada':'Desligada';$('radarCoverageBtn').classList.toggle('on',on);$('radarCoverageBtn').setAttribute('aria-pressed',String(on));if(state.coverageLayer){state.map.removeLayer(state.coverageLayer);state.coverageLayer=null;}if(on){const host=state.radarHost||'https://tilecache.rainviewer.com';state.coverageLayer=L.tileLayer(host+'/v2/coverage/0/512/{z}/{x}/{y}/0/0_0.png',{tileSize:256,opacity:.32,maxNativeZoom:7,maxZoom:18,attribution:'Cobertura: RainViewer'}).addTo(state.map);}}
+  function zoomToStartGPS(current){
+    if(!current||!Number.isFinite(current.lat)||!Number.isFinite(current.lng)||!state.mapReady)return;
+    const map=state.map;
+    const options={animate:true,duration:1.1,easeLinearity:.3};
+    if(typeof map.flyTo==='function')map.flyTo(current,NAV_ZOOM,options);
+    else map.setView(current,NAV_ZOOM,options);
+  }
   function visibleNavigationFocusY(){
     const mapRect=$('map')?.getBoundingClientRect?.();
     const top=$('navigationPanel')?.getBoundingClientRect?.();
@@ -609,7 +632,7 @@
     const map=state.map;
     const hasRotation=typeof map.setHeading==='function' && Number.isFinite(nav.cameraHeading);
     if(hasRotation)map.setHeading(nav.cameraHeading,{ease:.25,deadzone:1});
-    const zoom=Math.max(16,map.getZoom());
+    const zoom=Math.max(NAV_ZOOM,map.getZoom());
     let target=point;
     if(typeof map.project==='function' && typeof map.unproject==='function' && typeof map.getSize==='function') {
       const size=map.getSize();
@@ -644,7 +667,7 @@
     else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0,visibleNavigationFocusY());}
     else if(state.nav.active)followNavigationCamera(shown,pos);
-    else if(state.follow)state.map.setView(p,Math.max(11,state.map.getZoom()),{animate:true});
+    else if(state.follow && !state.nav.waiting && !state.nav.building)state.map.setView(p,Math.max(11,state.map.getZoom()),{animate:true});
     if(state.origin.gps){state.origin.point=p;state.origin.label='Sua localização atual';$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');
       if(!state.nav.active&&!state.nav.waiting&&state.routeLayer&&(!state.lastRoutePoint||p.distanceTo(state.lastRoutePoint)>3000)){state.lastRoutePoint=p;removeRouteLayers();drawRoute();}
     }
@@ -682,6 +705,10 @@
     $('mapsBtn').onclick=openMaps;$('wazeBtn').onclick=openWaze;
     $('startNavigationBtn').onclick=startNavigation; $('navigationStopBtn').onclick=()=>stopNavigation();
     $('tripSettingsBtn').onclick=openSettings;
+    $('navigationViewPreference').onchange=e=>{
+      saveNavigationViewPreference(e.target.value);
+      // Preferência ajustada durante a navegação será aplicada na próxima partida.
+    };
     $('navigationFullscreenBtn').onclick=toggleFullscreen;$('fullscreenFloatingBtn').onclick=toggleFullscreen;
     document.addEventListener('fullscreenchange',()=>{if(!isFullscreen())state.nav.fullscreenOwned=false;refreshFullscreenButtons();});
     $('navigationCenterBtn').onclick=recenterNavigation;
@@ -706,7 +733,7 @@
     try{historyRecorder=window.MotoTripHistory?.createStore(localStorage);}catch(e){console.warn('Histórico indisponível',e);}
     try{weatherMonitor.optedIn=localStorage.getItem('motoradar-weather-optin-v1')==='true';}catch(_){}
     $('radarAlertOptIn').checked=weatherMonitor.optedIn;
-    restore();initMap();renderStops();setVoiceButton();setRecordingButton(false);$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
+    restore();restoreNavigationViewPreference();initMap();renderStops();setVoiceButton();setRecordingButton(false);$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
       {$('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';$('tripSpeed').textContent='—';$('tripArrival').textContent='—';}},8000);

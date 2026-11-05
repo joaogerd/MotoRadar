@@ -315,3 +315,9 @@ body:has(.navigation-panel:not([hidden])) .navigation-panel{top:calc(env(safe-ar
 #map.mr-pseudo3d .gps-bike{filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}
 .trip-actions #navigation3dBtn[aria-pressed="true"]{background:#dbf0fb;color:#084e7b;border-color:#7dbedb}
 @media(prefers-reduced-motion:reduce){#map.mr-pseudo3d{transition:none}}
+
+/* Preferência persistente de visualização inicial para a navegação. */
+.settings-subheading{font-size:14px;letter-spacing:.01em;color:#153e65;margin:16px 0 6px;font-weight:800}
+.navigation-view-select{max-width:53%;min-width:134px;min-height:48px;border:1px solid #c9dbea;border-radius:12px;padding:8px 9px;color:#0b3569;background:#f6faff;font:700 13px system-ui,sans-serif}
+.navigation-view-select:focus-visible{outline:3px solid #318bf5;outline-offset:2px}
+@media(max-width:390px){.navigation-view-select{font-size:12px;max-width:58%;padding:7px 5px}}
