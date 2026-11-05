@@ -160,7 +160,7 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             # Reproduzir bug relatado: GPS já foi usado para ver a moto no mapa,
             # mas não há novas callbacks do watchPosition enquanto estacionada.
             page.locator('#gpsFloatingBtn').click()
-            page.wait_for_function('window.__watchCalls===1 && !!document.querySelector(".gps-bike")')
+            page.wait_for_function('window.__watchCalls===1 && document.querySelector("#gpsFloatingBtn").classList.contains("active")')
             page.evaluate('''() => { const clock=Date.now;Date.now=()=>clock()+20000; }''')
             page.locator('#startNavigationBtn').click()
             page.wait_for_function('window.__oneShots>=1',timeout=12000)
