@@ -33,7 +33,7 @@
     radarVisible:true, coverage:false, opacity:.68, animation:null,
     gpsPoint:null, gpsWatch:null, gpsMarker:null, accuracyCircle:null, follow:false,
     pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
-    nav:{active:false,waiting:false,building:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
+    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -256,7 +256,7 @@
     nav.lastFixAt=Date.now();
     updateTripSpeed(position);
     const accuracy=Number(position.coords.accuracy||999);
-    if(nav.waiting){if(accuracy>100){navigationStatus('Aguardando GPS com melhor precisão…');return;}beginNavigation(p,position);return;}
+    if(nav.waiting){if(accuracy>100){navigationStatus('GPS impreciso ('+accuracy+' m). Tente centralizar novamente ao ar livre.');$('navigationGpsState').textContent='Precisão GPS insuficiente';return;}beginNavigation(p,position);return;}
     if(nav.building||!nav.session)return;
     const info=nav.session.update({lat:p.lat,lng:p.lng,accuracy,heading:position.coords.heading,speed:position.coords.speed});
     updateNavDisplay(info);
@@ -347,7 +347,7 @@
     if(!navigator.geolocation||!window.isSecureContext){toast('Navegação exige GPS e acesso HTTPS.');return;}
     const nav=state.nav;
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
-    nav.waiting=true;nav.building=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
+    nav.waiting=true;nav.building=false;nav.gpsRequestPending=false;nav.gpsRequestSerial++;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
     // A preferência precisa refletir no mapa já ao tocar em Iniciar, mesmo
     // enquanto esperamos por um primeiro GPS com precisão suficiente.
@@ -358,8 +358,42 @@
     $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
     $('navigationNextStop').textContent='GPS em tempo real';$('navigationGpsState').textContent='Solicitando localização';
     enterFullscreen(true);keepAwake();enableGPS(false);
-    if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint);
-    // O painel de navegação já mostra o aguardo do GPS; evitar toast sobre as manobras.
+    if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint,nav.latestPosition);
+    else requestFreshNavigationGPS();
+    // Sem nova leitura, não depender de movimento para iniciar a navegação.
+  }
+  function requestFreshNavigationGPS(){
+    const nav=state.nav;
+    if(!nav.waiting||nav.gpsRequestPending)return;
+    if(typeof navigator.geolocation?.getCurrentPosition!=='function'){
+      navigationStatus('Aguardando uma nova leitura GPS…');
+      return; // O watchPosition existente ainda pode fornecer uma posição.
+    }
+    nav.gpsRequestPending=true;
+    const navId=nav.requestId,serial=++nav.gpsRequestSerial;
+    navigationStatus('Localizando sua posição…');
+    $('navigationGpsState').textContent='Atualizando GPS';
+    const complete=(position,error)=>{
+      if(serial!==nav.gpsRequestSerial||nav.requestId!==navId)return;
+      nav.gpsRequestPending=false;
+      if(!nav.waiting)return; // A navegação já começou pelo watchPosition.
+      if(position){
+        updateGPS(position); // Mesma validação e rota do GPS contínuo.
+        return;
+      }
+      const msg=error?.code===1
+        ? 'Acesso ao GPS bloqueado. Autorize a localização no navegador.'
+        : 'GPS sem nova posição. Toque em centralizar para tentar novamente.';
+      navigationStatus(msg);
+      $('navigationGpsState').textContent=msg;
+    };
+    try{
+      navigator.geolocation.getCurrentPosition(
+        position=>complete(position,null),
+        error=>complete(null,error),
+        {enableHighAccuracy:true,timeout:12000,maximumAge:0}
+      );
+    }catch(error){complete(null,error);}
   }
   // MapLibre v6 usa módulos ES, não possui o bundle global UMD da v5.
   // Evita download/instalação até o usuário pedir a perspectiva 3D.
@@ -473,7 +507,7 @@
   function stopNavigation(cancelSpeech=true){
     disablePerspective();finishRecording();
     const nav=state.nav;
-    nav.requestId++;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
+    nav.requestId++;nav.gpsRequestSerial++;nav.gpsRequestPending=false;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
     $('tripNotice').hidden=true;clearTimeout(toastTimeout);
     setTripPanelCompact(false,false);
@@ -604,6 +638,7 @@
   function recenterNavigation(){
     setTripPanelCompact(true,false);
     setFollow(true);
+    if(state.nav.waiting){requestFreshNavigationGPS();return;}
     refreshNavigationCamera();
   }
   function setFollow(on) {
