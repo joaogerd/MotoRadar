@@ -31,7 +31,13 @@ jobs:
       - name: Instalar dependências de teste
         run: |
           python -m pip install pytest playwright
-          python -m playwright install --with-deps chromium
+          # Os testes executam /usr/bin/chromium, não o binário baixado pelo Playwright.
+          # Evitar download duplicado de navegador e pacotes de sistema no runner.
+          if [ ! -x /usr/bin/chromium ]; then
+            sudo apt-get update
+            sudo apt-get install -y chromium
+          fi
+          /usr/bin/chromium --version
       - name: Validar sintaxe JavaScript
         run: |
           for file in public/*.js; do node --check "$file"; done
