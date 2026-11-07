@@ -22,7 +22,7 @@ def test_zoom_to_current_gps_before_routing_and_safe_default():
     assert "map.flyTo(current,NAV_ZOOM" in app
     assert "zoomToStartGPS(current)" in app
     assert "setNavigationPerspective(navigationViewPreference==='2.5d',false)" in app
-    assert "nav.lastAccuracy>100" in app
+    assert "nav.lastAccuracy>GPS_START_ACCURACY_MAX" in app
     assert "recentNavigationGPS()" in app
     assert "GPS_RETRY_INTERVAL_MS" in app
     assert "Math.max(NAV_ZOOM,map.getZoom())" in app
