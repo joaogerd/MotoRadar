@@ -13,17 +13,17 @@
 <link rel="preconnect" href="https://tile.openstreetmap.org">
 <link rel="preconnect" href="https://api.rainviewer.com">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="app.css?v=19">
+<link rel="stylesheet" href="app.css?v=20">
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/@tomickigrzegorz/leaflet-rotate@0.2.4/dist/leaflet-rotate.umd.min.js"></script>
-<script defer src="navigation.js?v=19"></script>
-<script defer src="trip-history.js?v=19"></script>
-<script defer src="offline-route.js?v=19"></script>
-<script defer src="smart-stops.js?v=19"></script>
-<script defer src="weather-corridor.js?v=19"></script>
-<script defer src="echo-motion.js?v=19"></script>
-<script defer src="perspective-map.js?v=19"></script>
-<script defer src="app.js?v=19"></script>
+<script defer src="navigation.js?v=20"></script>
+<script defer src="trip-history.js?v=20"></script>
+<script defer src="offline-route.js?v=20"></script>
+<script defer src="smart-stops.js?v=20"></script>
+<script defer src="weather-corridor.js?v=20"></script>
+<script defer src="echo-motion.js?v=20"></script>
+<script defer src="perspective-map.js?v=20"></script>
+<script defer src="app.js?v=20"></script>
 </head>
 <body>
 <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden">
@@ -149,7 +149,7 @@
        <button id="tripCompactCenterBtn" class="icon-btn" type="button" aria-label="Centralizar a moto no mapa" title="Centralizar localização" hidden><svg class="icon icon-md"><use href="#mr-target-solid"></use></svg></button>
        <button id="tripPanelToggleBtn" class="trip-panel-toggle" type="button" aria-expanded="true" aria-controls="tripMetrics tripUtilities tripActions" aria-label="Recolher painel para ver o mapa"><svg class="icon icon-sm" aria-hidden="true"><use id="tripPanelToggleIcon" href="#mr-chevron-down"></use></svg><span id="tripPanelToggleLabel">Mapa</span></button>
        <button id="navigationFullscreenBtn" class="icon-btn nav-fullscreen" type="button" aria-pressed="false" aria-label="Alternar tela cheia" title="Tela cheia"><svg class="icon icon-md"><use href="#mr-fullscreen"></use></svg></button>
-       <button id="tripSettingsBtn" class="trip-radar-btn" type="button" aria-label="Configurações meteorológicas" title="Radar e clima"><svg class="icon icon-md"><use href="#mr-radar-solid"></use></svg><span>Radar e clima</span></button>
+       <button id="tripSettingsBtn" class="trip-radar-btn" type="button" aria-label="Configurações de GPS e radar" title="GPS e radar"><svg class="icon icon-md"><use href="#mr-radar-solid"></use></svg><span>GPS e radar</span></button>
      </div>
    </div>
    <div id="tripNotice" class="trip-notice" role="status" aria-live="polite" hidden></div>
@@ -202,6 +202,10 @@
     </select>
   </label>
   <p class="warning">A preferência fica salva neste navegador. O zoom e o acompanhamento iniciam automaticamente quando o GPS estiver disponível.</p>
+  <h3 class="settings-subheading">Diagnóstico de localização</h3>
+  <p class="warning">Mostra se o problema é a precisão do GPS, o monitoramento ou o roteador. Não inclui suas coordenadas.</p>
+  <pre id="gpsDiagnostics" class="gps-diagnostics" role="status" aria-live="polite">Sem leitura GPS.</pre>
+  <button id="gpsDiagnosticCopyBtn" class="secondary-action" type="button">Copiar diagnóstico GPS</button>
   <h3 class="settings-subheading">Radar meteorológico</h3>
   <div class="setting-row"><span>Radar sobre o mapa</span><button id="radarVisibleBtn" class="chip on" type="button" aria-pressed="true">Ligado</button></div>
   <label class="slider-label" for="radarOpacity">Opacidade <span id="opacityTxt">68%</span></label><input id="radarOpacity" type="range" min="0" max="100" value="68">
