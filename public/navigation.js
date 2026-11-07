@@ -40,15 +40,18 @@
   }
   function instructionFor(step, stopName) {
     const m=step?.maneuver||{}, type=m.type||'continue';
-    const street=String(step?.name||'').trim();
+    const street=String(step?.name||step?.ref||'').trim().slice(0,90);
+    const destinations=String(step?.destinations||'').split(';').map(v=>v.trim()).filter(Boolean).slice(0,2).join(' ou ').slice(0,90);
     const onto=street ? ` na ${street}` : '';
     if(type==='arrive')return stopName ? `Você chegou a ${stopName}` : 'Você chegou ao destino';
     if(type==='depart')return `Siga${onto || ' em frente'}`;
     if(['roundabout','rotary','roundabout turn'].includes(type)) {
       const exit=Number(m.exit);
-      return `Entre na rotatória${exit>0?` e pegue a ${exit}ª saída`:''}${onto}`;
+      const ordinal=['','primeira','segunda','terceira','quarta','quinta','sexta','sétima','oitava','nona','décima'][exit]||`${exit}ª`;
+      return `Entre na rotatória${exit>0?` e pegue a ${ordinal} saída`:''}${onto}`;
     }
-    if(['merge','on ramp','off ramp'].includes(type))return `Pegue o acesso ${dir(m.modifier)}${onto}`;
+    if(type==='off ramp')return `Pegue a saída ${dir(m.modifier)}${destinations?` para ${destinations}`:''}${street?` pela ${street}`:''}`;
+    if(['merge','on ramp'].includes(type))return `Pegue o acesso ${dir(m.modifier)}${onto}${destinations?` sentido ${destinations}`:''}`;
     if(type==='fork')return `Mantenha-se ${dir(m.modifier)}${onto}`;
     if(type==='end of road')return `No fim da via, vire ${dir(m.modifier)}${onto}`;
     if(m.modifier==='uturn')return `Faça o retorno${onto}`;
@@ -69,11 +72,30 @@
       const progress=accum+len*fraction;
       // Prefer a nearby forward segment on overlapping round trips.
       const penalty=progress+90<prevMeters ? 250+Math.min(1500,prevMeters-progress) : 0;
-      const candidate={lateralMeters:d,progressMeters:progress,score:d+penalty};
+      const candidate={lateralMeters:d,progressMeters:progress,score:d+penalty,snappedPoint:{lat:p1.lat+(p2.lat-p1.lat)*fraction,lng:p1.lng+(p2.lng-p1.lng)*fraction},segmentBearing:bearingBetween(p1,p2)};
       if(!best || candidate.score<best.score)best=candidate;
       accum+=len;
     }
     return {...best,totalGeometryMeters:accum};
+  }
+  // Ajuste APENAS visual: não substitui coordenadas reais no cálculo de desvios.
+  function snapForDisplay(point,coords,options={}) {
+    const raw={lat:point?.lat,lng:point?.lng};
+    const accuracy=Number(options.accuracy);
+    if(!Array.isArray(coords)||coords.length<2 ||
+       !Number.isFinite(raw.lat)||!Number.isFinite(raw.lng) ||
+       !Number.isFinite(accuracy)||accuracy<0||accuracy>35)
+      return {point:raw,matched:false,reason:'gps-ou-rota-indisponivel'};
+    const best=projection(raw,coords,Math.max(0,Number(options.progressMeters)||0));
+    const limit=Math.max(18,Math.min(36,accuracy*1.75));
+    if(!best||best.lateralMeters>limit)return {point:raw,matched:false,reason:'distante-da-rota'};
+    const heading=Number(options.heading),speed=Number(options.speed);
+    if(options.heading!=null&&Number.isFinite(heading) && heading>=0&&heading<360&&
+       options.speed!=null && Number.isFinite(speed)&&speed>=2) {
+      const diff=Math.abs((heading-best.segmentBearing+540)%360-180);
+      if(diff>65)return {point:raw,matched:false,reason:'rumo-incompativel'};
+    }
+    return {point:best.snappedPoint,matched:true,lateralMeters:best.lateralMeters,progressMeters:best.progressMeters};
   }
   function createSession(route,stopNames=[]) {
     if(!Array.isArray(route?.geometry?.coordinates)||route.geometry.coordinates.length<2 || !Array.isArray(route.legs))throw new Error('Rota com manobras inválida');
@@ -117,9 +139,9 @@
       const instruction=next?instructionFor(next.step,next.label):'Siga a rota';
       const speak=[];
       if(next && !ended && !offRoute) {
-        const phase=maneuverMeters<=75?'agora':maneuverMeters<=500?'breve':'longe';
+        const phase=maneuverMeters<=75?'agora':maneuverMeters<=600?'breve':maneuverMeters<=1200?'antecipar':'distante';
         const id=`${next.index}:${phase}`;
-        if(id!==lastPrompt && (phase!=='longe'||progress===0)){
+        if(id!==lastPrompt && phase!=='distante'){
           speak.push(phase==='agora'?instruction:`Em ${fmt(maneuverMeters)}, ${instruction.charAt(0).toLowerCase()+instruction.slice(1)}`);
           lastPrompt=id;
         }
@@ -132,5 +154,16 @@
     }
     return {update,get passedStops(){return passedStops;}};
   }
-  return {createSession,instructionFor,fmt,meters,bearingBetween,projection};
+  // Retorna o Y (em pixels) no espaço livre entre os painéis, não no centro da tela inteira.
+  // Independente de DOM para possibilitar testes com tamanhos de celular diferentes.
+  function visibleFocusY(height, topPanelBottom, bottomPanelTop) {
+    const h=Number(height);
+    if(!Number.isFinite(h)||h<=0)return 0;
+    const top=Math.max(0,Math.min(h,Number.isFinite(topPanelBottom)?topPanelBottom:0));
+    const bottom=Math.max(0,Math.min(h,Number.isFinite(bottomPanelTop)?bottomPanelTop:h));
+    if(bottom<=top+80)return Math.max(0,Math.min(h,(top+bottom)/2));
+    const margin=Math.min(55,(bottom-top)*.18);
+    return top+margin+(bottom-top-2*margin)*.58;
+  }
+  return {createSession,instructionFor,fmt,meters,bearingBetween,projection,snapForDisplay,visibleFocusY};
 });
