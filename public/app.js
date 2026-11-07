@@ -654,7 +654,6 @@
     if(updateCamera)refreshNavigationCamera();
   }
   function recenterNavigation(){
-    setTripPanelCompact(true,false);
     setFollow(true);
     if(state.nav.waiting){
       state.nav.gpsPermissionDenied=false;
@@ -664,6 +663,9 @@
       else requestFreshNavigationGPS();
       return;
     }
+    // Recolher os controles só quando a viagem já está em andamento.
+    // Durante a espera, eles precisam continuar acessíveis para diagnóstico.
+    setTripPanelCompact(true,false);
     refreshNavigationCamera();
   }
   function setFollow(on) {
