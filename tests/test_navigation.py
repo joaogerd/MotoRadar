@@ -1,5 +1,6 @@
 """Unit and browser integration coverage for experimental foreground navigation."""
 from pathlib import Path
+import pytest
 import subprocess
 import json
 import re
@@ -95,7 +96,8 @@ class Static(SimpleHTTPRequestHandler):
     def log_message(self,*args): pass
 
 
-def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
+@pytest.mark.parametrize('elapsed_ms,expected_one_shots', [(20000,0),(90000,1)])
+def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app(elapsed_ms,expected_one_shots):
     server=ThreadingHTTPServer(('127.0.0.1',0),Static)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     try:
@@ -163,12 +165,15 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             # visualmente o botão flutuante no viewport sintético de teste.
             page.evaluate('document.querySelector("#gpsFloatingBtn").click()')
             page.wait_for_function('window.__watchCalls===1 && document.querySelector("#gpsFloatingBtn").classList.contains("active")')
-            page.evaluate('''() => { const clock=Date.now;Date.now=()=>clock()+20000; }''')
+            page.evaluate('''(elapsed) => { const clock=Date.now;Date.now=()=>clock()+elapsed; }''',elapsed_ms)
             page.locator('#startNavigationBtn').click()
-            page.wait_for_function('window.__oneShots>=1',timeout=12000)
+            if expected_one_shots:
+                page.wait_for_function('window.__oneShots>=1',timeout=12000)
+                assert page.evaluate('window.__oneShotOptions.enableHighAccuracy') is True
+                assert page.evaluate('window.__oneShotOptions.maximumAge') == 30000
+            page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
+            assert page.evaluate('window.__oneShots') == expected_one_shots
             assert page.evaluate('window.__watchCalls') == 1, 'Não criar watchPosition duplicado'
-            assert page.evaluate('window.__oneShotOptions.enableHighAccuracy') is True
-            assert page.evaluate('window.__oneShotOptions.maximumAge') == 0
             page.locator('#navigationPanel').wait_for(state='visible',timeout=12000)
             page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
