@@ -14,7 +14,8 @@ const begin=source.indexOf('  function recentNavigationGPS(');
 const end=source.indexOf('  function startNavigation(){');
 if(begin<0||end<=begin)throw Error('Função de cache GPS ausente');
 const code=source.slice(begin,end);
-const make=new Function('state','now',`const Date={now:()=>now}; ${code};return (age)=>recentNavigationGPS(age);`);
+const maxAccuracy=Number(source.match(/const GPS_START_ACCURACY_MAX = (\d+)/)?.[1]);
+const make=new Function('state','now',`const GPS_START_ACCURACY_MAX=${maxAccuracy};const Date={now:()=>now}; ${code};return (age)=>recentNavigationGPS(age);`);
 const gps={coords:{latitude:-15.8,longitude:-48,accuracy:8},timestamp:100000};
 const state={gpsPoint:{lat:-15.8,lng:-48},nav:{latestPosition:gps,lastFixAt:100000,lastAccuracy:8}};
 const result={
