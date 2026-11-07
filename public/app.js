@@ -7,6 +7,8 @@
   const key = 'motoradar-route-v03';
   const NAV_VIEW_KEY = 'motoradar-navigation-view-v1';
   const NAV_ZOOM = 17;
+  const GPS_READY_MAX_AGE_MS = 60000;
+  const GPS_RETRY_INTERVAL_MS = 16000;
   // Roteiro turístico definido para a viagem de moto em Brasília (origem = retorno).
   // Coordenadas das atrações publicadas em https://programeviagem.com/roteiros-de-viagem-sugeridos/roteiro-de-viagem-brasilia-e-goias/
   // O endereço do Dok Hotel NÃO é estimado: consultamos o geocodificador e só traçamos a rota se for encontrado.
@@ -33,7 +35,7 @@
     radarVisible:true, coverage:false, opacity:.68, animation:null,
     gpsPoint:null, gpsWatch:null, gpsMarker:null, accuracyCircle:null, follow:false,
     pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
-    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
+    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -340,6 +342,19 @@
     try{Promise.resolve(document.exitFullscreen()).catch(()=>{});}catch(_){}
   }
   function toggleFullscreen(){if(isFullscreen())exitFullscreen();else enterFullscreen(state.nav.active||state.nav.waiting);}
+  // O fix de watchPosition é compartilhado com o botão "Minha localização".
+  // Usar o timestamp do aparelho impede iniciar com uma posição antiga
+  // apenas porque o navegador acabou de entregar um valor em cache.
+  function recentNavigationGPS(maxAgeMs=GPS_READY_MAX_AGE_MS){
+    const nav=state.nav,position=nav.latestPosition;
+    if(!state.gpsPoint||!position||!nav.lastFixAt||!Number.isFinite(nav.lastAccuracy)||nav.lastAccuracy>100)return null;
+    const ageFromCallback=Math.max(0,Date.now()-nav.lastFixAt);
+    const deviceTimestamp=Number(position.timestamp);
+    const ageFromDevice=Number.isFinite(deviceTimestamp)&&deviceTimestamp>0
+      ? Math.max(0,Date.now()-deviceTimestamp) : ageFromCallback;
+    if(Math.max(ageFromCallback,ageFromDevice)>maxAgeMs)return null;
+    return {point:state.gpsPoint,position};
+  }
   function startNavigation(){
     if(state.nav.active||state.nav.waiting)return;
     if(!isReady()||!state.routeData){toast('Primeiro calcule uma rota com saída, paradas e destino.');return;}
@@ -347,7 +362,7 @@
     if(!navigator.geolocation||!window.isSecureContext){toast('Navegação exige GPS e acesso HTTPS.');return;}
     const nav=state.nav;
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
-    nav.waiting=true;nav.building=false;nav.gpsRequestPending=false;nav.gpsRequestSerial++;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
+    nav.waiting=true;nav.building=false;nav.gpsRequestPending=false;nav.gpsRequestSerial++;nav.lastGpsAttemptAt=0;nav.gpsPermissionDenied=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
     // A preferência precisa refletir no mapa já ao tocar em Iniciar, mesmo
     // enquanto esperamos por um primeiro GPS com precisão suficiente.
@@ -358,18 +373,20 @@
     $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
     $('navigationNextStop').textContent='GPS em tempo real';$('navigationGpsState').textContent='Solicitando localização';
     enterFullscreen(true);keepAwake();enableGPS(false);
-    if(state.gpsPoint && Date.now()-nav.lastFixAt<15000 && nav.lastAccuracy<=100)beginNavigation(state.gpsPoint,nav.latestPosition);
+    // O GPS que já posicionou a moto no mapa serve também para iniciar a viagem.
+    // Isso evita exigir um novo movimento/novo callback de watchPosition.
+    const cached=recentNavigationGPS();
+    if(cached)beginNavigation(cached.point,cached.position);
     else requestFreshNavigationGPS();
-    // Sem nova leitura, não depender de movimento para iniciar a navegação.
   }
   function requestFreshNavigationGPS(){
     const nav=state.nav;
-    if(!nav.waiting||nav.gpsRequestPending)return;
+    if(!nav.waiting||nav.gpsRequestPending||nav.gpsPermissionDenied)return;
     if(typeof navigator.geolocation?.getCurrentPosition!=='function'){
       navigationStatus('Aguardando uma nova leitura GPS…');
       return; // O watchPosition existente ainda pode fornecer uma posição.
     }
-    nav.gpsRequestPending=true;
+    nav.gpsRequestPending=true;nav.lastGpsAttemptAt=Date.now();
     const navId=nav.requestId,serial=++nav.gpsRequestSerial;
     navigationStatus('Localizando sua posição…');
     $('navigationGpsState').textContent='Atualizando GPS';
@@ -381,9 +398,10 @@
         updateGPS(position); // Mesma validação e rota do GPS contínuo.
         return;
       }
-      const msg=error?.code===1
-        ? 'Acesso ao GPS bloqueado. Autorize a localização no navegador.'
-        : 'GPS sem nova posição. Toque em centralizar para tentar novamente.';
+      nav.gpsPermissionDenied=error?.code===1;
+      const msg=nav.gpsPermissionDenied
+        ? 'GPS bloqueado. Autorize a localização nas configurações do navegador.'
+        : 'Sem leitura recente do GPS. Tentando novamente; use Centralizar se necessário.';
       navigationStatus(msg);
       $('navigationGpsState').textContent=msg;
     };
@@ -391,7 +409,7 @@
       navigator.geolocation.getCurrentPosition(
         position=>complete(position,null),
         error=>complete(null,error),
-        {enableHighAccuracy:true,timeout:12000,maximumAge:0}
+        {enableHighAccuracy:true,timeout:12000,maximumAge:30000}
       );
     }catch(error){complete(null,error);}
   }
@@ -507,7 +525,7 @@
   function stopNavigation(cancelSpeech=true){
     disablePerspective();finishRecording();
     const nav=state.nav;
-    nav.requestId++;nav.gpsRequestSerial++;nav.gpsRequestPending=false;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
+    nav.requestId++;nav.gpsRequestSerial++;nav.gpsRequestPending=false;nav.gpsPermissionDenied=false;nav.lastGpsAttemptAt=0;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
     $('tripNotice').hidden=true;clearTimeout(toastTimeout);
     setTripPanelCompact(false,false);
@@ -638,7 +656,14 @@
   function recenterNavigation(){
     setTripPanelCompact(true,false);
     setFollow(true);
-    if(state.nav.waiting){requestFreshNavigationGPS();return;}
+    if(state.nav.waiting){
+      state.nav.gpsPermissionDenied=false;
+      enableGPS(false); // O watch anterior pode ter sido encerrado por erro.
+      const cached=recentNavigationGPS();
+      if(cached)beginNavigation(cached.point,cached.position);
+      else requestFreshNavigationGPS();
+      return;
+    }
     refreshNavigationCamera();
   }
   function setFollow(on) {
@@ -690,7 +715,7 @@
       marker.style.setProperty('--gps-heading',`${angle}deg`);
     }
   }
-  function gpsError(error){const txt=error?.code===1?'Localização negada. Autorize o GPS no navegador ou digite sua origem.':'GPS indisponível. Você pode preencher a origem manualmente.';toast(txt);if(state.nav.waiting||state.nav.active)navigationStatus(txt);if(error?.code===1&&state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null;}}
+  function gpsError(error){if(error?.code===1)state.nav.gpsPermissionDenied=true;const txt=error?.code===1?'Localização negada. Autorize o GPS no navegador ou digite sua origem.':'GPS indisponível. Você pode preencher a origem manualmente.';toast(txt);if(state.nav.waiting||state.nav.active)navigationStatus(txt);if(error?.code===1&&state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null;}}
   function updateGPS(pos){
     if(historyRecorder?.isRecording()) historyRecorder.addFix({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,speed:pos.coords.speed,altitude:pos.coords.altitude},pos.timestamp||Date.now());
     const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;const accuracy=Math.max(0,Math.round(pos.coords.accuracy||0));
@@ -738,7 +763,15 @@
       $(input).addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchPlace(id);}});
     }
     document.querySelectorAll('.place-search[data-search]').forEach(btn=>btn.onclick=()=>searchPlace(btn.dataset.search));
-    $('gpsUseBtn').onclick=()=>enableGPS(true);$('gpsFloatingBtn').onclick=()=>enableGPS(false);
+    $('gpsUseBtn').onclick=()=>enableGPS(true);$('gpsFloatingBtn').onclick=()=>{
+      enableGPS(false);
+      if(state.nav.waiting){
+        state.nav.gpsPermissionDenied=false;
+        const cached=recentNavigationGPS();
+        if(cached)beginNavigation(cached.point,cached.position);
+        else requestFreshNavigationGPS();
+      }
+    };
     $('addStopBtn').onclick=addStop;$('clearBtn').onclick=clearRoute;$('drawRouteBtn').onclick=drawRoute;
     $('brasiliaTourBtn').onclick=loadBrasiliaTour;
     $('mapsBtn').onclick=openMaps;$('wazeBtn').onclick=openWaze;
@@ -754,7 +787,15 @@
     $('tripCompactCenterBtn').onclick=recenterNavigation;
     $('tripPanelToggleBtn').onclick=()=>setTripPanelCompact(!$('tripDashboard').classList.contains('compact'));
     $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;setVoiceButton();if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible' && (state.nav.active||state.nav.waiting))keepAwake();});
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState!=='visible'||(!state.nav.active&&!state.nav.waiting))return;
+      keepAwake();
+      if(state.nav.waiting){
+        const cached=recentNavigationGPS();
+        if(cached)beginNavigation(cached.point,cached.position);
+        else requestFreshNavigationGPS();
+      }
+    });
     window.addEventListener('resize',()=>{if(state.nav.active&&state.follow)requestAnimationFrame(refreshNavigationCamera);});
     document.querySelectorAll('.map-pick[data-pick]').forEach(btn=>btn.onclick=()=>setPick(btn.dataset.pick));$('cancelPickBtn').onclick=()=>{stopPick();setMinimized(false);};
     $('radarVisibleBtn').onclick=()=>toggleRadar(!state.radarVisible);
@@ -774,8 +815,19 @@
     $('radarAlertOptIn').checked=weatherMonitor.optedIn;
     restore();restoreNavigationViewPreference();initMap();renderStops();setVoiceButton();setRecordingButton(false);$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
-    setInterval(()=>{if((state.nav.active||state.nav.waiting) && state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>25000)
-      {$('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';$('tripSpeed').textContent='—';$('tripArrival').textContent='—';}},8000);
+    setInterval(()=>{
+      const nav=state.nav;
+      if(nav.waiting && !nav.gpsRequestPending && !nav.gpsPermissionDenied &&
+         Date.now()-nav.lastGpsAttemptAt>=GPS_RETRY_INTERVAL_MS){
+        const cached=recentNavigationGPS();
+        if(cached)beginNavigation(cached.point,cached.position);
+        else requestFreshNavigationGPS();
+      }
+      if(nav.active && nav.lastFixAt && Date.now()-nav.lastFixAt>25000){
+        $('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';
+        $('tripSpeed').textContent='—';$('tripArrival').textContent='—';
+      }
+    },8000);
     const queryTour=new URLSearchParams(location.search).get('roteiro');
     const hashTour=new URLSearchParams(location.hash.replace(/^#/, '')).get('roteiro');
     if(queryTour==='brasilia'||hashTour==='brasilia')loadBrasiliaTour();
