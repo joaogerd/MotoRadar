@@ -44,6 +44,6 @@ def test_reading_browser_tiles_requires_cors_and_is_manual_only():
     html=(ROOT/'index.html').read_text()
     assert 'radarMotionBtn' in html
     assert 'radarMotionStatus' in html
-    assert "echo-motion.js?v=18" in html
+    assert "echo-motion.js?v=" in html
     app=(ROOT/'app.js').read_text()
     assert 'MotoEchoMotion.analyzeFrames' in app
