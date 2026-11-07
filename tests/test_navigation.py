@@ -1,5 +1,6 @@
 """Unit and browser integration coverage for experimental foreground navigation."""
 from pathlib import Path
+import pytest
 import subprocess
 import json
 import re
@@ -95,7 +96,8 @@ class Static(SimpleHTTPRequestHandler):
     def log_message(self,*args): pass
 
 
-def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
+@pytest.mark.parametrize('elapsed_ms,expected_one_shots,fail_first', [(20000,0,False),(90000,1,False),(90000,2,True)])
+def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app(elapsed_ms,expected_one_shots,fail_first):
     server=ThreadingHTTPServer(('127.0.0.1',0),Static)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     try:
@@ -130,7 +132,8 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
                   },
                   getCurrentPosition:(success,fail,opts)=>{
                     window.__oneShots++;window.__oneShotOptions=opts;
-                    setTimeout(()=>success(gpsFix()),10);
+                    if(window.__failFirstOneShot && window.__oneShots===1)setTimeout(()=>fail({code:3}),10);
+                    else setTimeout(()=>success(gpsFix()),10);
                   },
                   clearWatch:()=>{}
                 }});
@@ -163,12 +166,25 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app():
             # visualmente o botão flutuante no viewport sintético de teste.
             page.evaluate('document.querySelector("#gpsFloatingBtn").click()')
             page.wait_for_function('window.__watchCalls===1 && document.querySelector("#gpsFloatingBtn").classList.contains("active")')
-            page.evaluate('''() => { const clock=Date.now;Date.now=()=>clock()+20000; }''')
+            page.evaluate('''(args) => {
+              const clock=Date.now;
+              Date.now=()=>clock()+args.elapsed;
+              window.__failFirstOneShot=args.fail;
+            }''', {'elapsed':elapsed_ms,'fail':fail_first})
             page.locator('#startNavigationBtn').click()
-            page.wait_for_function('window.__oneShots>=1',timeout=12000)
+            if expected_one_shots:
+                page.wait_for_function('window.__oneShots>=1',timeout=12000)
+                assert page.evaluate('window.__oneShotOptions.enableHighAccuracy') is True
+                assert page.evaluate('window.__oneShotOptions.maximumAge') == 30000
+            if fail_first:
+                page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Tentando novamente")',timeout=12000)
+                # O botão Centralizar deve reabrir a tentativa sem exigir
+                # movimento da motocicleta ou um novo watchPosition.
+                page.locator('#navigationCenterBtn').click()
+                page.wait_for_function('window.__oneShots>=2',timeout=12000)
+            page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
+            assert page.evaluate('window.__oneShots') == expected_one_shots
             assert page.evaluate('window.__watchCalls') == 1, 'Não criar watchPosition duplicado'
-            assert page.evaluate('window.__oneShotOptions.enableHighAccuracy') is True
-            assert page.evaluate('window.__oneShotOptions.maximumAge') == 0
             page.locator('#navigationPanel').wait_for(state='visible',timeout=12000)
             page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Vire")',timeout=12000)
             assert 'direita' in page.locator('#navigationInstruction').inner_text().lower()
