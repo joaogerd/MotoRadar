@@ -21,7 +21,7 @@ const result={
   recent:make(state,120000)(60000)!==null,
   expired:make(state,170001)(60000)===null,
   exactLimit:make(state,160000)(60000)!==null,
-  imprecise:make({...state,nav:{...state.nav,lastAccuracy:180}},120000)(60000)===null,
+  imprecise:make({...state,nav:{...state.nav,lastAccuracy:380}},120000)(60000)===null,
   noFix:make({...state,gpsPoint:null},120000)(60000)===null,
   oldDeviceTime:make({...state,nav:{...state.nav,lastFixAt:170000}},175000)(60000)===null,
   noDeviceTime:make({...state,nav:{...state.nav,latestPosition:{coords:gps.coords}}},120000)(60000)!==null
