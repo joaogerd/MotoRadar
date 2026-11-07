@@ -9,6 +9,9 @@
   const NAV_ZOOM = 17;
   const GPS_READY_MAX_AGE_MS = 60000;
   const GPS_RETRY_INTERVAL_MS = 16000;
+  const GPS_WATCH_RETRY_MS = 12000;
+  const GPS_STALL_MS = 30000;
+  const GPS_START_ACCURACY_MAX = 300; // Partida provisória, não libera manobras imprecisas.
   // Roteiro turístico definido para a viagem de moto em Brasília (origem = retorno).
   // Coordenadas das atrações publicadas em https://programeviagem.com/roteiros-de-viagem-sugeridos/roteiro-de-viagem-brasilia-e-goias/
   // O endereço do Dok Hotel NÃO é estimado: consultamos o geocodificador e só traçamos a rota se for encontrado.
@@ -33,9 +36,9 @@
     destination: {id:'destination',label:'',point:null},
     stops:[], map:null, radarHost:'', frames:[], frameIndex:0, radarLayer:null, coverageLayer:null,
     radarVisible:true, coverage:false, opacity:.68, animation:null,
-    gpsPoint:null, gpsWatch:null, gpsMarker:null, accuracyCircle:null, follow:false,
+    gpsPoint:null, gpsWatch:null, gpsWatchGeneration:0, gpsMarker:null, accuracyCircle:null, follow:false,
     pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
-    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
+    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,lastWatchStartedAt:0,lastGpsError:'',lastGpsErrorAt:0,lastRouteError:'',needsPreciseReanchor:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -239,14 +242,15 @@
     const remaining=MotoNavigation.fmt(info.remainingMeters);
     $('navigationRemaining').textContent=remaining+' restantes';
     $('tripDistance').textContent=remaining;
-    const mins=Math.max(0,Math.round(info.etaSeconds/60));
-    const readable=mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
+    const etaOk=Number.isFinite(info.etaSeconds);
+    const mins=etaOk?Math.max(0,Math.round(info.etaSeconds/60)):null;
+    const readable=mins===null?'—':mins>=60?`${Math.floor(mins/60)} h ${mins%60} min`:`${mins} min`;
     $('navigationEta').textContent=readable;
     $('tripDuration').textContent=readable;
     $('tripArrival').textContent=info.lowAccuracy?'—':new Date(Date.now()+Math.max(0,info.etaSeconds)*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     const upcoming=state.nav.goals[info.passedStops];
     $('navigationNextStop').textContent=upcoming?upcoming.label:'Destino';
-    $('navigationGpsState').textContent=info.lowAccuracy?'GPS de baixa precisão':info.offRoute?'Verificando desvio…':'GPS ativo';
+    $('navigationGpsState').textContent=info.lowAccuracy?`GPS impreciso (±${state.nav.lastAccuracy} m) — aguardando precisão`:info.offRoute?'GPS ativo • verificando desvio…':`GPS ativo • ±${state.nav.lastAccuracy} m`;
   }
   function endNavigationComplete(){
     voice('Você chegou ao destino');stopNavigation(false);
@@ -257,9 +261,22 @@
     if(!nav.active&&!nav.waiting)return;
     nav.lastFixAt=Date.now();
     updateTripSpeed(position);
-    const accuracy=Number(position.coords.accuracy||999);
-    if(nav.waiting){if(accuracy>100){navigationStatus('GPS impreciso ('+accuracy+' m). Tente centralizar novamente ao ar livre.');$('navigationGpsState').textContent='Precisão GPS insuficiente';return;}beginNavigation(p,position);return;}
+    const accuracy=Number.isFinite(Number(position.coords.accuracy)) && Number(position.coords.accuracy)>=0
+      ? Number(position.coords.accuracy) : 9999;
+    if(nav.waiting){
+      if(accuracy>GPS_START_ACCURACY_MAX){
+        navigationStatus(`GPS recebido com precisão de ±${Math.round(accuracy)} m. Aguardando melhorar (até ${GPS_START_ACCURACY_MAX} m).`);
+        $('navigationGpsState').textContent=`Sinal recebido • ±${Math.round(accuracy)} m`;
+        zoomToStartGPS(p); // Mostrar a posição mesmo antes de existir precisão suficiente para manobras.
+        return;
+      }
+      beginNavigation(p,position);return;
+    }
     if(nav.building||!nav.session)return;
+    if(nav.needsPreciseReanchor && accuracy<=100){
+      nav.needsPreciseReanchor=false;
+      rerouteNavigation(p);return; // Recalcular a partir da posição exata; não manter origem aproximada.
+    }
     const info=nav.session.update({lat:p.lat,lng:p.lng,accuracy,heading:position.coords.heading,speed:position.coords.speed});
     updateNavDisplay(info);
     if(info.finished){endNavigationComplete();return;}
@@ -282,11 +299,16 @@
       const route=data.routes[0];
       if(!route.legs?.length)throw Error('Servidor não retornou manobras');
       showRoute(route);nav.session=MotoNavigation.createSession(route,nav.goals.map(g=>g.label));nav.active=true;nav.building=false;
+      nav.needsPreciseReanchor=Number(initialPosition?.coords?.accuracy)>100;nav.lastRouteError='';
       $('navigationPanel').hidden=false;nav.cameraFrames=0;nav.cameraPrevious=null;nav.cameraHeading=null;setFollow(true);followNavigationCamera(current,initialPosition||nav.latestPosition);
-      navigationStatus('Navegação iniciada');voice('Navegação iniciada. Acompanhe o trajeto e mantenha atenção na estrada.');
+      navigationStatus('Navegação iniciada');
+      $('navigationGpsState').textContent=nav.needsPreciseReanchor?'Posição aproximada: aguardando GPS mais preciso':'GPS ativo';
+      if(!nav.needsPreciseReanchor)voice('Navegação iniciada. Acompanhe o trajeto e mantenha atenção na estrada.');
       handleNavPosition(current,initialPosition||{coords:{accuracy:Math.max(1,state.nav.lastAccuracy||10),heading:null,speed:null}});
     }catch(err){if(id!==nav.requestId)return;console.warn('Não foi possível iniciar navegação',err);
-      stopNavigation();toast('Navegação indisponível: confira a conexão e tente novamente com o GPS ativo.');
+      const detail=err?.name==='AbortError'?'Tempo esgotado no servidor de rotas':String(err?.message||'Falha no roteador').slice(0,160);
+      nav.lastRouteError=detail; // GPS e roteamento são problemas diferentes.
+      stopNavigation();toast('GPS recebido, mas não foi possível calcular o trajeto: '+detail+'.');
     }finally{if(id===nav.requestId)nav.building=false;}
   }
   async function rerouteNavigation(current){
@@ -299,7 +321,7 @@
       try{result=await requestRoute([current,...remaining.map(x=>x.point)],controller.signal);}finally{clearTimeout(timeout);}
       if(id!==nav.requestId)return;
       const route=result.routes[0];if(!route.legs?.length)throw Error('Manobras indisponíveis');
-      showRoute(route);nav.goals=remaining;nav.session=MotoNavigation.createSession(route,remaining.map(x=>x.label));
+      showRoute(route);nav.goals=remaining;nav.session=MotoNavigation.createSession(route,remaining.map(x=>x.label));nav.lastRouteError='';
       voice('Rota recalculada');navigationStatus('Rota recalculada');
     }catch(err){if(id===nav.requestId){console.warn('Recálculo indisponível',err);toast('Sem recálculo. Verifique a estrada e a conexão.');}}
     finally{if(id===nav.requestId)nav.building=false;}
@@ -347,7 +369,7 @@
   // apenas porque o navegador acabou de entregar um valor em cache.
   function recentNavigationGPS(maxAgeMs=GPS_READY_MAX_AGE_MS){
     const nav=state.nav,position=nav.latestPosition;
-    if(!state.gpsPoint||!position||!nav.lastFixAt||!Number.isFinite(nav.lastAccuracy)||nav.lastAccuracy>100)return null;
+    if(!state.gpsPoint||!position||!nav.lastFixAt||!Number.isFinite(nav.lastAccuracy)||nav.lastAccuracy>GPS_START_ACCURACY_MAX)return null;
     const ageFromCallback=Math.max(0,Date.now()-nav.lastFixAt);
     const deviceTimestamp=Number(position.timestamp);
     const ageFromDevice=Number.isFinite(deviceTimestamp)&&deviceTimestamp>0
@@ -362,7 +384,7 @@
     if(!navigator.geolocation||!window.isSecureContext){toast('Navegação exige GPS e acesso HTTPS.');return;}
     const nav=state.nav;
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
-    nav.waiting=true;nav.building=false;nav.gpsRequestPending=false;nav.gpsRequestSerial++;nav.lastGpsAttemptAt=0;nav.gpsPermissionDenied=false;nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
+    nav.waiting=true;nav.building=false;nav.gpsRequestPending=false;nav.gpsRequestSerial++;nav.lastGpsAttemptAt=0;nav.gpsPermissionDenied=false;nav.needsPreciseReanchor=false;nav.lastRouteError='';nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
     // A preferência precisa refletir no mapa já ao tocar em Iniciar, mesmo
     // enquanto esperamos por um primeiro GPS com precisão suficiente.
@@ -525,7 +547,7 @@
   function stopNavigation(cancelSpeech=true){
     disablePerspective();finishRecording();
     const nav=state.nav;
-    nav.requestId++;nav.gpsRequestSerial++;nav.gpsRequestPending=false;nav.gpsPermissionDenied=false;nav.lastGpsAttemptAt=0;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
+    nav.requestId++;nav.gpsRequestSerial++;nav.gpsRequestPending=false;nav.gpsPermissionDenied=false;nav.lastGpsAttemptAt=0;nav.needsPreciseReanchor=false;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
     $('tripNotice').hidden=true;clearTimeout(toastTimeout);
     setTripPanelCompact(false,false);
@@ -535,7 +557,7 @@
     $('routeSummary').hidden=!state.routeData;
     releaseWakeLock();if(cancelSpeech)try{speechSynthesis.cancel();}catch(_){}
     if(nav.ownsGpsWatch && !state.origin.gps && state.gpsWatch!==null){
-      navigator.geolocation?.clearWatch(state.gpsWatch);state.gpsWatch=null;
+      releaseGpsWatch();
       $('gpsFloatingBtn').classList.remove('active');
     }
     nav.ownsGpsWatch=false;setFollow(false);nav.cameraPrevious=null;nav.cameraHeading=null;nav.cameraFrames=0;
@@ -595,7 +617,7 @@
     }catch(_){el.textContent='Comparação indisponível; confira acesso CORS ao radar.';}
     finally{$('radarMotionBtn').disabled=false;}
   }
-  function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); }
+  function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); updateGpsDiagnostics(); }
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
   function ageMinutes(epoch){return Math.max(0,Math.round(Date.now()/60000-epoch/60));}
@@ -717,10 +739,60 @@
       marker.style.setProperty('--gps-heading',`${angle}deg`);
     }
   }
-  function gpsError(error){if(error?.code===1)state.nav.gpsPermissionDenied=true;const txt=error?.code===1?'Localização negada. Autorize o GPS no navegador ou digite sua origem.':'GPS indisponível. Você pode preencher a origem manualmente.';toast(txt);if(state.nav.waiting||state.nav.active)navigationStatus(txt);if(error?.code===1&&state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null;}}
+  function releaseGpsWatch(){
+    const old=state.gpsWatch;
+    state.gpsWatch=null;
+    state.gpsWatchGeneration++;
+    if(old!==null)try{navigator.geolocation?.clearWatch(old);}catch(_){}
+  }
+  function gpsError(error,generation){
+    if(generation!==undefined&&generation!==state.gpsWatchGeneration)return;
+    const nav=state.nav,code=Number(error?.code)||0;
+    const reason=code===1?'Permissão negada':code===2?'Posição indisponível':code===3?'Tempo de aquisição esgotado':'Erro de localização';
+    nav.lastGpsError=reason;nav.lastGpsErrorAt=Date.now();
+    if(code===1)nav.gpsPermissionDenied=true;
+    // Um watchPosition com erro pode não voltar a entregar callbacks no Android.
+    // Encerrá-lo permite reiniciar com intervalo controlado em vez de manter um ID morto.
+    releaseGpsWatch();
+    if(nav.waiting||nav.active){
+      const message=code===1?'GPS bloqueado: autorize a localização no navegador.':
+        `GPS: ${reason}. Tentando recuperar o sinal automaticamente.`;
+      if(nav.waiting)navigationStatus(message);
+      $('navigationGpsState').textContent=message;
+    }else toast(code===1?'Localização negada. Autorize o GPS no navegador.':`GPS: ${reason}. Toque em Minha localização para tentar novamente.`);
+  }
+  function gpsDiagnosticsText(){
+    const nav=state.nav;
+    const stage=nav.active?'navegação':nav.building?'roteando':nav.waiting?'aguardando GPS':'planejamento';
+    const age=nav.lastFixAt?Math.max(0,Math.round((Date.now()-nav.lastFixAt)/1000))+' s':'sem leitura';
+    const accuracy=Number.isFinite(nav.lastAccuracy)?nav.lastAccuracy+' m':'indisponível';
+    const error=nav.lastGpsError||'nenhum';
+    const routing=nav.lastRouteError||'nenhum';
+    const source=location.hostname||'local';
+    return [
+      'MotoRadar — diagnóstico de localização (sem coordenadas)',
+      `Versão: GPS v21 • origem: ${source}`,
+      `Estado: ${stage} • HTTPS: ${window.isSecureContext?'sim':'não'}`,
+      `Monitor GPS: ${state.gpsWatch===null?'inativo':'ativo'} • aquisição avulsa: ${nav.gpsRequestPending?'sim':'não'}`,
+      `Última leitura: ${age} • precisão: ${accuracy}`,
+      `Erro GPS: ${error} • permissão negada: ${nav.gpsPermissionDenied?'sim':'não'}`,
+      `Erro de roteamento: ${routing}`,
+      `Mensagem: ${$('navigationInstruction')?.textContent||'nenhuma'}`
+    ].join('\n');
+  }
+  function updateGpsDiagnostics(){
+    const output=$('gpsDiagnostics');
+    if(output)output.textContent=gpsDiagnosticsText();
+  }
   function updateGPS(pos){
+    if(!Number.isFinite(Number(pos?.coords?.latitude))||!Number.isFinite(Number(pos?.coords?.longitude))||
+       Math.abs(Number(pos.coords.latitude))>90||Math.abs(Number(pos.coords.longitude))>180)return;
+    state.nav.lastGpsError='';
+    state.nav.gpsPermissionDenied=false;
     if(historyRecorder?.isRecording()) historyRecorder.addFix({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,speed:pos.coords.speed,altitude:pos.coords.altitude},pos.timestamp||Date.now());
-    const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;const accuracy=Math.max(0,Math.round(pos.coords.accuracy||0));
+    const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;
+    const rawAccuracy=Number(pos.coords.accuracy);
+    const accuracy=Number.isFinite(rawAccuracy)&&rawAccuracy>=0?Math.round(rawAccuracy):9999;
     // Somente o marcador/câmera são alinhados visualmente à rota. A posição original
     // segue para cálculo de desvio e registro GPS, evitando mascarar mudanças reais.
     const snap=state.nav.active && state.routeData?.geometry?.coordinates && window.MotoNavigation?.snapForDisplay
@@ -728,8 +800,8 @@
       : {point:p,matched:false};
     const shown=snap.matched?L.latLng(snap.point.lat,snap.point.lng):p;
     const icon=L.divIcon({className:'',iconSize:[48,52],iconAnchor:[24,26],html:'<div class="gps-vehicle" aria-hidden="true"><svg class="gps-bike" viewBox="0 0 48 52"><ellipse class="bike-tire" cx="24" cy="7" rx="5" ry="6"/><path class="bike-handlebar" d="M10 19H38"/><circle class="bike-mirror" cx="8" cy="19" r="3.5"/><circle class="bike-mirror" cx="40" cy="19" r="3.5"/><path class="bike-body" d="M19 22h10l5 12-5 12H19l-5-12z"/><circle class="bike-helmet" cx="24" cy="18" r="8"/><path class="bike-visor" d="M19 17q5-4 10 0"/><ellipse class="bike-tire" cx="24" cy="47" rx="5" ry="4"/><path class="bike-tail" d="M19 39h10"/></svg></div>'});
-    if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:accuracy,color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
-    else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(accuracy);}
+    if(!state.gpsMarker){state.gpsMarker=L.marker(shown,{icon,zIndexOffset:700}).addTo(state.map);state.accuracyCircle=L.circle(p,{radius:Math.min(accuracy,9999),color:'#2c8fff',weight:1,fillOpacity:.07}).addTo(state.map);}
+    else{state.gpsMarker.setLatLng(shown);state.accuracyCircle.setLatLng(p).setRadius(Math.min(accuracy,9999));}
     if(state.nav.active && perspective){if(state.follow)perspective.update(shown,Number.isFinite(pos.coords.heading)?pos.coords.heading:state.nav.cameraHeading??0,visibleNavigationFocusY());}
     else if(state.nav.active)followNavigationCamera(shown,pos);
     else if(state.follow && !state.nav.waiting && !state.nav.building)state.map.setView(p,Math.max(11,state.map.getZoom()),{animate:true});
@@ -740,12 +812,27 @@
     renderPins();$('gpsFloatingBtn').classList.add('active');handleNavPosition(p,pos);
     if(weatherMonitor.optedIn && state.nav.active)analyzeRadarAhead(true);
   }
-  function enableGPS(useAsOrigin=false){if(useAsOrigin){state.origin.gps=true;state.origin.point=state.gpsPoint;state.origin.label='Sua localização atual';removeOldRoute();$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');persist();}
+  function enableGPS(useAsOrigin=false){
+    if(useAsOrigin){
+      state.origin.gps=true;state.origin.point=state.gpsPoint;state.origin.label='Sua localização atual';removeOldRoute();
+      $('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');persist();
+    }
     if(!navigator.geolocation){toast('Este navegador não oferece localização. Digite uma origem.');return;}
     if(!window.isSecureContext){toast('Abra a página em HTTPS para usar GPS.');return;}
-    // Quando estamos iniciando viagem, deixar o flyTo fazer pan/zoom suave até o GPS.
-    setFollow(true);if(state.gpsPoint && !state.nav.active && !state.nav.waiting && !state.nav.building)state.map.setView(state.gpsPoint,Math.max(12,state.map.getZoom()));
-    if(state.gpsWatch===null)state.gpsWatch=navigator.geolocation.watchPosition(updateGPS,gpsError,{enableHighAccuracy:true,timeout:18000,maximumAge:12000});
+    setFollow(true);
+    if(state.gpsPoint&&!state.nav.active&&!state.nav.waiting&&!state.nav.building)
+      state.map.setView(state.gpsPoint,Math.max(12,state.map.getZoom()));
+    if(state.gpsWatch===null){
+      const generation=++state.gpsWatchGeneration;
+      state.nav.lastWatchStartedAt=Date.now();
+      try{
+        state.gpsWatch=navigator.geolocation.watchPosition(
+          pos=>{if(generation===state.gpsWatchGeneration)updateGPS(pos);},
+          error=>gpsError(error,generation),
+          {enableHighAccuracy:true,timeout:18000,maximumAge:12000}
+        );
+      }catch(error){gpsError(error,generation);}
+    }
     if(useAsOrigin&&!state.gpsPoint)toast('Solicitando permissão de localização…');
   }
   function initMap(){state.map=L.map('map',{zoomControl:false,preferCanvas:true,rotate:true,touchRotate:false,dragRotate:false,rotateControl:false}).setView([-15.7942,-47.8822],11);
@@ -757,6 +844,12 @@
     $('supportBtn').onclick=openSupport;$('supportCloseBtn').onclick=()=>$('supportPanel').hidden=true;$('supportSearchBtn').onclick=searchSupport;
     $('tripRecordBtn').onclick=toggleRecording;$('tripHistoryBtn').onclick=openHistory;$('historyCloseBtn').onclick=()=>$('historyPanel').hidden=true;
     $('settingsBtn').onclick=openSettings;$('radarQuickBtn').onclick=openSettings;$('settingsClose').onclick=closeSettings;
+    $('gpsDiagnosticCopyBtn').onclick=async()=>{
+      const diagnostic=gpsDiagnosticsText();
+      try{await navigator.clipboard.writeText(diagnostic);toast('Diagnóstico copiado, sem coordenadas GPS.');}
+      catch(_){toast('Cópia indisponível. Selecione o texto do diagnóstico.');}
+      updateGpsDiagnostics();
+    };
     $('settingsPanel').addEventListener('click',e=>{if(e.target===$('settingsPanel'))closeSettings();});
     $('routeToggle').onclick=()=>setMinimized(!$('routePanel').classList.contains('minimized'));
     $('editRouteBtn').onclick=()=>setMinimized(false);
@@ -792,6 +885,9 @@
     document.addEventListener('visibilitychange',()=>{
       if(document.visibilityState!=='visible'||(!state.nav.active&&!state.nav.waiting))return;
       keepAwake();
+      if(state.gpsWatch===null|| (state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>GPS_STALL_MS)){
+        releaseGpsWatch();enableGPS(false);
+      }
       if(state.nav.waiting){
         const cached=recentNavigationGPS();
         if(cached)beginNavigation(cached.point,cached.position);
@@ -825,10 +921,18 @@
         if(cached)beginNavigation(cached.point,cached.position);
         else requestFreshNavigationGPS();
       }
+      if((nav.waiting||nav.active||state.origin.gps)&&!nav.gpsPermissionDenied){
+        const stalled=nav.lastFixAt && Date.now()-nav.lastFixAt>GPS_STALL_MS;
+        const retryReady=Date.now()-nav.lastWatchStartedAt>=GPS_WATCH_RETRY_MS;
+        if(retryReady&&(state.gpsWatch===null||stalled)){
+          releaseGpsWatch();enableGPS(false);
+        }
+      }
       if(nav.active && nav.lastFixAt && Date.now()-nav.lastFixAt>25000){
-        $('navigationGpsState').textContent='Sinal GPS perdido • confira a localização';
+        $('navigationGpsState').textContent='Sinal GPS perdido • recuperando localização';
         $('tripSpeed').textContent='—';$('tripArrival').textContent='—';
       }
+      if(!$('settingsPanel').hidden)updateGpsDiagnostics();
     },8000);
     const queryTour=new URLSearchParams(location.search).get('roteiro');
     const hashTour=new URLSearchParams(location.hash.replace(/^#/, '')).get('roteiro');
