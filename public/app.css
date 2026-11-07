@@ -321,3 +321,18 @@ body:has(.navigation-panel:not([hidden])) .navigation-panel{top:calc(env(safe-ar
 .navigation-view-select{max-width:53%;min-width:134px;min-height:48px;border:1px solid #c9dbea;border-radius:12px;padding:8px 9px;color:#0b3569;background:#f6faff;font:700 13px system-ui,sans-serif}
 .navigation-view-select:focus-visible{outline:3px solid #318bf5;outline-offset:2px}
 @media(max-width:390px){.navigation-view-select{font-size:12px;max-width:58%;padding:7px 5px}}
+
+/* Diagnóstico local, somente texto e sem coordenadas precisas. */
+.gps-diagnostics {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 12px;
+  border-radius: 10px;
+  background: #edf3fa;
+  color: #27354a;
+  max-height: 250px;
+  overflow: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}

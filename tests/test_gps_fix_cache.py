@@ -14,14 +14,15 @@ const begin=source.indexOf('  function recentNavigationGPS(');
 const end=source.indexOf('  function startNavigation(){');
 if(begin<0||end<=begin)throw Error('Função de cache GPS ausente');
 const code=source.slice(begin,end);
-const make=new Function('state','now',`const Date={now:()=>now}; ${code};return (age)=>recentNavigationGPS(age);`);
+const maxAccuracy=Number(source.match(/const GPS_START_ACCURACY_MAX = (\d+)/)?.[1]);
+const make=new Function('state','now',`const GPS_START_ACCURACY_MAX=${maxAccuracy};const Date={now:()=>now}; ${code};return (age)=>recentNavigationGPS(age);`);
 const gps={coords:{latitude:-15.8,longitude:-48,accuracy:8},timestamp:100000};
 const state={gpsPoint:{lat:-15.8,lng:-48},nav:{latestPosition:gps,lastFixAt:100000,lastAccuracy:8}};
 const result={
   recent:make(state,120000)(60000)!==null,
   expired:make(state,170001)(60000)===null,
   exactLimit:make(state,160000)(60000)!==null,
-  imprecise:make({...state,nav:{...state.nav,lastAccuracy:180}},120000)(60000)===null,
+  imprecise:make({...state,nav:{...state.nav,lastAccuracy:380}},120000)(60000)===null,
   noFix:make({...state,gpsPoint:null},120000)(60000)===null,
   oldDeviceTime:make({...state,nav:{...state.nav,lastFixAt:170000}},175000)(60000)===null,
   noDeviceTime:make({...state,nav:{...state.nav,latestPosition:{coords:gps.coords}}},120000)(60000)!==null
