@@ -43,7 +43,7 @@ def test_actions_are_consistent_and_keep_all_functionality():
     for item in ("navigation3dBtn", "navigationFullscreenBtn", "navigationCenterBtn",
                  "navigationVoiceBtn", "tripRecordBtn", "navigationStopBtn", "tripSettingsBtn"):
         assert html.count('id="' + item + '"') == 1
-    for label in ("Centralizar", "Voz", "Gravar", "Encerrar viagem", "Radar e clima"):
+    for label in ("Centralizar", "Voz", "Gravar", "Encerrar viagem", "GPS e radar"):
         assert label in html
     assert 'mr-record-solid' in html
     assert 'mr-voice-solid' in html
