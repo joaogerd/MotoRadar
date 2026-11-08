@@ -11,6 +11,10 @@
   const GPS_RETRY_INTERVAL_MS = 16000;
   const GPS_WATCH_RETRY_MS = 12000;
   const GPS_STALL_MS = 30000;
+  const GPS_INITIAL_PROBE_DELAY_MS = 6500;
+  const GPS_ONE_SHOT_TIMEOUT_MS = 15000;
+  const GPS_FIX_MAX_AGE_MS = 60000;
+  const GPS_DIAGNOSTIC_VERSION = 'v22';
   const GPS_START_ACCURACY_MAX = 300; // Partida provisória, não libera manobras imprecisas.
   // Roteiro turístico definido para a viagem de moto em Brasília (origem = retorno).
   // Coordenadas das atrações publicadas em https://programeviagem.com/roteiros-de-viagem-sugeridos/roteiro-de-viagem-brasilia-e-goias/
@@ -38,7 +42,7 @@
     radarVisible:true, coverage:false, opacity:.68, animation:null,
     gpsPoint:null, gpsWatch:null, gpsWatchGeneration:0, gpsMarker:null, accuracyCircle:null, follow:false,
     pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
-    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,lastWatchStartedAt:0,lastGpsError:'',lastGpsErrorAt:0,lastRouteError:'',needsPreciseReanchor:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
+    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,lastWatchStartedAt:0,lastGpsError:'',lastGpsErrorAt:0,lastRouteError:'',gpsRequestTimer:null,gpsOneShotAttempts:0,gpsOneShotErrors:0,gpsWatchRestarts:0,gpsWatchFixes:0,lastFixSource:'nenhum',lastGpsTimestamp:0,browserPermission:'desconhecida',invalidFixes:0,lastRenderError:'',lastNavigationError:'',needsPreciseReanchor:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -384,6 +388,7 @@
     if(!navigator.geolocation||!window.isSecureContext){toast('Navegação exige GPS e acesso HTTPS.');return;}
     const nav=state.nav;
     nav.goals=[...state.stops,state.destination].map(x=>({label:x.label||'Destino',point:x.point}));
+    cancelPendingGpsProbe();
     nav.waiting=true;nav.building=false;nav.gpsRequestPending=false;nav.gpsRequestSerial++;nav.lastGpsAttemptAt=0;nav.gpsPermissionDenied=false;nav.needsPreciseReanchor=false;nav.lastRouteError='';nav.session=null;nav.active=false;nav.previewRoute=state.routeData;nav.ownsGpsWatch=state.gpsWatch===null;
     $('navigationPanel').hidden=false;$('tripDashboard').hidden=false;$('routePanel').hidden=true;$('routeSummary').hidden=true;
     // A preferência precisa refletir no mapa já ao tocar em Iniciar, mesmo
@@ -394,46 +399,129 @@
     navigationStatus('Aguardando GPS…');$('navigationTurn').textContent='—';
     $('navigationRemaining').textContent='Rota a calcular';$('navigationEta').textContent='—';
     $('navigationNextStop').textContent='GPS em tempo real';$('navigationGpsState').textContent='Solicitando localização';
-    enterFullscreen(true);keepAwake();enableGPS(false);
+    // Solicitar localização enquanto a página mantém a ativação do usuário;
+    // a transição para tela cheia não deve bloquear a primeira tentativa GPS.
+    enableGPS(false);enterFullscreen(true);keepAwake();
     // O GPS que já posicionou a moto no mapa serve também para iniciar a viagem.
     // Isso evita exigir um novo movimento/novo callback de watchPosition.
     const cached=recentNavigationGPS();
     if(cached)beginNavigation(cached.point,cached.position);
     else requestFreshNavigationGPS();
   }
+  function cancelPendingGpsProbe(){
+    const nav=state.nav;
+    if(nav.gpsRequestTimer!==null)clearTimeout(nav.gpsRequestTimer);
+    nav.gpsRequestTimer=null;nav.gpsRequestPending=false;nav.gpsRequestSerial++;
+  }
+  function gpsFixAge(position,now=Date.now()){
+    const timestamp=position?.timestamp;
+    return Number.isFinite(timestamp)&&timestamp>0?Math.max(0,now-timestamp):0;
+  }
+  function gpsWatchStalled(now=Date.now()){
+    const nav=state.nav;
+    if(state.gpsWatch===null||!nav.lastWatchStartedAt)return false;
+    // Se a primeira leitura NUNCA chegou, usar a hora de início do monitor.
+    // Fix de monitor anterior não pode prorrogar a nova sessão.
+    const reference=Math.max(nav.lastWatchStartedAt,nav.lastFixAt||0);
+    return now-reference>=GPS_STALL_MS;
+  }
+  async function checkGpsPermission(){
+    const nav=state.nav;
+    if(typeof navigator.permissions?.query!=='function')return;
+    try{
+      const result=await navigator.permissions.query({name:'geolocation'});
+      nav.browserPermission=result.state||'desconhecida';
+      if(result.state==='denied')nav.gpsPermissionDenied=true;
+      if(!$('settingsPanel').hidden)updateGpsDiagnostics();
+    }catch(_){nav.browserPermission='não disponível';}
+  }
+  function gpsAcquisitionStatus(message){
+    const nav=state.nav;
+    if(nav.waiting)navigationStatus(message);
+    if(nav.waiting||nav.active)$('navigationGpsState').textContent=message;
+    if(!$('settingsPanel').hidden)updateGpsDiagnostics();
+  }
   function requestFreshNavigationGPS(){
     const nav=state.nav;
-    if(!nav.waiting||nav.gpsRequestPending||nav.gpsPermissionDenied)return;
+    const interested=nav.waiting||nav.active||state.gpsWatch!==null||state.follow;
+    if(!interested||nav.building||nav.gpsRequestPending||nav.gpsPermissionDenied)return;
     if(typeof navigator.geolocation?.getCurrentPosition!=='function'){
-      navigationStatus('Aguardando uma nova leitura GPS…');
-      return; // O watchPosition existente ainda pode fornecer uma posição.
+      gpsAcquisitionStatus('Navegador sem API de localização disponível.');
+      return;
     }
-    nav.gpsRequestPending=true;nav.lastGpsAttemptAt=Date.now();
-    const navId=nav.requestId,serial=++nav.gpsRequestSerial;
-    navigationStatus('Localizando sua posição…');
-    $('navigationGpsState').textContent='Atualizando GPS';
+    nav.gpsRequestPending=true;nav.lastGpsAttemptAt=Date.now();nav.gpsOneShotAttempts++;
+    const serial=++nav.gpsRequestSerial;
+    let completed=false;
+    if(nav.waiting)navigationStatus('Localizando sua posição…');
+    if(nav.waiting)$('navigationGpsState').textContent='Consultando GPS do navegador';
     const complete=(position,error)=>{
-      if(serial!==nav.gpsRequestSerial||nav.requestId!==navId)return;
-      nav.gpsRequestPending=false;
-      if(!nav.waiting)return; // A navegação já começou pelo watchPosition.
+      if(serial!==nav.gpsRequestSerial||completed)return;
+      completed=true;
+      if(nav.gpsRequestTimer!==null)clearTimeout(nav.gpsRequestTimer);
+      nav.gpsRequestTimer=null;nav.gpsRequestPending=false;
       if(position){
-        updateGPS(position); // Mesma validação e rota do GPS contínuo.
+        updateGPS(position,'consulta avulsa');
         return;
       }
-      nav.gpsPermissionDenied=error?.code===1;
-      const msg=nav.gpsPermissionDenied
-        ? 'GPS bloqueado. Autorize a localização nas configurações do navegador.'
-        : 'Sem leitura recente do GPS. Tentando novamente; use Centralizar se necessário.';
-      navigationStatus(msg);
-      $('navigationGpsState').textContent=msg;
+      nav.gpsOneShotErrors++;nav.lastGpsError=error?.code===1?'Permissão negada':
+        error?.code===2?'Posição indisponível':
+        error?.code===3?'Tempo esgotado':String(error?.message||'Sem resposta da localização');
+      nav.lastGpsErrorAt=Date.now();
+      if(error?.code===1)nav.gpsPermissionDenied=true;
+      const msg=nav.gpsPermissionDenied?'Localização bloqueada nas permissões do navegador.':
+        'O navegador não respondeu ao GPS. Tentando recuperar automaticamente.';
+      gpsAcquisitionStatus(msg);
     };
+    // A API Geolocation pode deixar a promessa de callback sem resposta
+    // (principalmente após mudanças de visibilidade). Nosso próprio relógio
+    // libera o estado pendente, inclusive quando a API não chama success/error.
+    nav.gpsRequestTimer=setTimeout(()=>{
+      complete(null,{code:3,message:'API Geolocation sem resposta'});
+    },GPS_ONE_SHOT_TIMEOUT_MS);
     try{
       navigator.geolocation.getCurrentPosition(
         position=>complete(position,null),
         error=>complete(null,error),
-        {enableHighAccuracy:true,timeout:12000,maximumAge:30000}
+        {enableHighAccuracy:true,timeout:12000,maximumAge:12000}
       );
     }catch(error){complete(null,error);}
+  }
+  function gpsHealthTick(now=Date.now()){
+    const nav=state.nav;
+    if(document.visibilityState==='hidden')return;
+    const interested=nav.waiting||nav.active||state.follow||state.origin.gps||state.gpsWatch!==null;
+    if(!interested||nav.gpsPermissionDenied)return;
+    const noWatch=state.gpsWatch===null;
+    const stalled=gpsWatchStalled(now);
+    const retryReady=now-nav.lastWatchStartedAt>=GPS_WATCH_RETRY_MS;
+    if(retryReady&&(noWatch||stalled)){
+      if(stalled){
+        nav.lastGpsError='Monitoramento sem novas leituras';
+        nav.lastGpsErrorAt=now;
+        nav.gpsWatchRestarts++;
+        releaseGpsWatch();
+        gpsAcquisitionStatus('GPS sem atualização. Reiniciando monitoramento…');
+      }
+      enableGPS(false);
+    }
+    const sinceLastFix=nav.lastFixAt?now-nav.lastFixAt:Infinity;
+    const sinceStart=now-nav.lastWatchStartedAt;
+    const noInitialFix=!nav.lastFixAt && state.gpsWatch!==null && sinceStart>=GPS_INITIAL_PROBE_DELAY_MS;
+    const needProbe=noInitialFix||sinceLastFix>=GPS_STALL_MS;
+    if(needProbe&&!nav.gpsRequestPending&&now-nav.lastGpsAttemptAt>=GPS_RETRY_INTERVAL_MS){
+      requestFreshNavigationGPS();
+    }
+    if(nav.active&&sinceLastFix>=25000){
+      $('navigationGpsState').textContent='Sinal GPS sem atualização • verificando navegador';
+      $('tripSpeed').textContent='—';$('tripArrival').textContent='—';
+    }
+    if(nav.waiting&&sinceLastFix>=GPS_INITIAL_PROBE_DELAY_MS&&!nav.gpsRequestPending){
+      const message=nav.lastGpsError?
+        'Sem resposta do GPS: '+nav.lastGpsError+'. Toque Centralizar para tentar novamente.':
+        'Aguardando primeira leitura GPS do navegador…';
+      navigationStatus(message);
+    }
+    if(!$('settingsPanel').hidden)updateGpsDiagnostics();
   }
   // MapLibre v6 usa módulos ES, não possui o bundle global UMD da v5.
   // Evita download/instalação até o usuário pedir a perspectiva 3D.
@@ -547,6 +635,7 @@
   function stopNavigation(cancelSpeech=true){
     disablePerspective();finishRecording();
     const nav=state.nav;
+    cancelPendingGpsProbe();
     nav.requestId++;nav.gpsRequestSerial++;nav.gpsRequestPending=false;nav.gpsPermissionDenied=false;nav.lastGpsAttemptAt=0;nav.needsPreciseReanchor=false;nav.active=false;nav.waiting=false;nav.building=false;nav.session=null;nav.goals=[];
     $('navigationPanel').hidden=true;$('tripDashboard').hidden=true;$('routePanel').hidden=false;
     $('tripNotice').hidden=true;clearTimeout(toastTimeout);
@@ -560,6 +649,7 @@
       releaseGpsWatch();
       $('gpsFloatingBtn').classList.remove('active');
     }
+    navigationStatus('Selecione uma rota para começar.');
     nav.ownsGpsWatch=false;setFollow(false);nav.cameraPrevious=null;nav.cameraHeading=null;nav.cameraFrames=0;
     try{state.map.stopHeadingUp?.();state.map.setBearing?.(0);}catch(_){}
   }
@@ -617,7 +707,7 @@
     }catch(_){el.textContent='Comparação indisponível; confira acesso CORS ao radar.';}
     finally{$('radarMotionBtn').disabled=false;}
   }
-  function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); updateGpsDiagnostics(); }
+  function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); checkGpsPermission(); updateGpsDiagnostics(); }
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
   function ageMinutes(epoch){return Math.max(0,Math.round(Date.now()/60000-epoch/60));}
@@ -769,13 +859,22 @@
     const error=nav.lastGpsError||'nenhum';
     const routing=nav.lastRouteError||'nenhum';
     const source=location.hostname||'local';
+    const monitorAge=nav.lastWatchStartedAt?Math.round((Date.now()-nav.lastWatchStartedAt)/1000)+' s':'não iniciado';
+    const ageMessage=(!nav.lastFixAt&&state.gpsWatch!==null&&gpsWatchStalled())?
+      'SEM PRIMEIRA LEITURA — monitoramento travado':'';
     return [
       'MotoRadar — diagnóstico de localização (sem coordenadas)',
-      `Versão: GPS v21 • origem: ${source}`,
+      `Versão: GPS ${GPS_DIAGNOSTIC_VERSION} • origem: ${source}`,
       `Estado: ${stage} • HTTPS: ${window.isSecureContext?'sim':'não'}`,
-      `Monitor GPS: ${state.gpsWatch===null?'inativo':'ativo'} • aquisição avulsa: ${nav.gpsRequestPending?'sim':'não'}`,
-      `Última leitura: ${age} • precisão: ${accuracy}`,
+      `Monitor GPS: ${state.gpsWatch===null?'inativo':'ativo'} • ativo há: ${monitorAge} • aquisição avulsa: ${nav.gpsRequestPending?'sim':'não'}`,
+      `Última leitura: ${age} • precisão: ${accuracy} • fonte: ${nav.lastFixSource}`,
+      `Permissão do navegador: ${nav.browserPermission} • visibilidade: ${document.visibilityState}`,
+      `Leituras do monitor: ${nav.gpsWatchFixes} • reinícios: ${nav.gpsWatchRestarts}`,
+      `Consultas avulsas: ${nav.gpsOneShotAttempts} • falhas: ${nav.gpsOneShotErrors}`,
+      `Estado de aquisição: ${ageMessage||'monitoramento iniciado'}`,
       `Erro GPS: ${error} • permissão negada: ${nav.gpsPermissionDenied?'sim':'não'}`,
+      `Leituras inválidas/antigas: ${nav.invalidFixes} • falha do mapa: ${nav.lastRenderError||'nenhuma'}`,
+      `Falha na navegação: ${nav.lastNavigationError||'nenhuma'}`,
       `Erro de roteamento: ${routing}`,
       `Mensagem: ${$('navigationInstruction')?.textContent||'nenhuma'}`
     ].join('\n');
@@ -784,17 +883,39 @@
     const output=$('gpsDiagnostics');
     if(output)output.textContent=gpsDiagnosticsText();
   }
-  function updateGPS(pos){
-    if(!Number.isFinite(Number(pos?.coords?.latitude))||!Number.isFinite(Number(pos?.coords?.longitude))||
-       Math.abs(Number(pos.coords.latitude))>90||Math.abs(Number(pos.coords.longitude))>180)return;
+  function updateGPS(pos,source='monitoramento'){
+    const coords=pos?.coords;
+    if(!coords||typeof coords.latitude!=='number'||typeof coords.longitude!=='number'||
+       !Number.isFinite(coords.latitude)||!Number.isFinite(coords.longitude)||
+       Math.abs(coords.latitude)>90||Math.abs(coords.longitude)>180){
+      state.nav.invalidFixes++;state.nav.lastGpsError='Posição GPS inválida';return;
+    }
+    // O navegador pode devolver coordenadas em cache; não tratar fix antigo como atual.
+    if(gpsFixAge(pos)>GPS_FIX_MAX_AGE_MS){
+      state.nav.invalidFixes++;state.nav.lastGpsError='Leitura GPS desatualizada';
+      state.nav.lastGpsErrorAt=Date.now();
+      return;
+    }
     state.nav.lastGpsError='';
+    state.nav.lastFixSource=source;
+    state.nav.lastGpsTimestamp=Number(pos.timestamp)||Date.now();
+    if(source==='monitoramento')state.nav.gpsWatchFixes++;
+    if(state.nav.gpsRequestPending)cancelPendingGpsProbe();
     state.nav.gpsPermissionDenied=false;
-    if(historyRecorder?.isRecording()) historyRecorder.addFix({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,speed:pos.coords.speed,altitude:pos.coords.altitude},pos.timestamp||Date.now());
-    const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;
-    const rawAccuracy=Number(pos.coords.accuracy);
+    const p=L.latLng(coords.latitude,coords.longitude);
+    const rawAccuracy=Number(coords.accuracy);
     const accuracy=Number.isFinite(rawAccuracy)&&rawAccuracy>=0?Math.round(rawAccuracy):9999;
-    // Somente o marcador/câmera são alinhados visualmente à rota. A posição original
-    // segue para cálculo de desvio e registro GPS, evitando mascarar mudanças reais.
+    // Registrar o fix ANTES de desenhar marcador/rota: uma exceção visual
+    // nunca pode transformar um callback real em "sem leitura" no diagnóstico.
+    state.gpsPoint=p;
+    state.nav.lastFixAt=Date.now();
+    state.nav.lastAccuracy=accuracy;
+    state.nav.latestPosition=pos;
+    try{
+      if(historyRecorder?.isRecording())historyRecorder.addFix({lat:coords.latitude,lng:coords.longitude,
+        accuracy:coords.accuracy,speed:coords.speed,altitude:coords.altitude},pos.timestamp||Date.now());
+    }catch(error){console.warn('Histórico GPS indisponível',error);}
+    try{
     const snap=state.nav.active && state.routeData?.geometry?.coordinates && window.MotoNavigation?.snapForDisplay
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
@@ -808,9 +929,19 @@
     if(state.origin.gps){state.origin.point=p;state.origin.label='Sua localização atual';$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');
       if(!state.nav.active&&!state.nav.waiting&&state.routeLayer&&(!state.lastRoutePoint||p.distanceTo(state.lastRoutePoint)>3000)){state.lastRoutePoint=p;removeRouteLayers();drawRoute();}
     }
-    state.nav.lastFixAt=Date.now();state.nav.lastAccuracy=accuracy;state.nav.latestPosition=pos;
-    renderPins();$('gpsFloatingBtn').classList.add('active');handleNavPosition(p,pos);
+    renderPins();$('gpsFloatingBtn').classList.add('active');
+      state.nav.lastRenderError='';
+    }catch(error){
+      state.nav.lastRenderError=String(error?.message||error).slice(0,120);
+      console.warn('Erro visual após GPS recebido',error);
+    }
+    try{handleNavPosition(p,pos);state.nav.lastNavigationError='';}
+    catch(error){
+      state.nav.lastNavigationError=String(error?.message||error).slice(0,120);
+      console.warn('Erro no cálculo de navegação após GPS recebido',error);
+    }
     if(weatherMonitor.optedIn && state.nav.active)analyzeRadarAhead(true);
+    if(!$('settingsPanel').hidden)updateGpsDiagnostics();
   }
   function enableGPS(useAsOrigin=false){
     if(useAsOrigin){
@@ -819,6 +950,7 @@
     }
     if(!navigator.geolocation){toast('Este navegador não oferece localização. Digite uma origem.');return;}
     if(!window.isSecureContext){toast('Abra a página em HTTPS para usar GPS.');return;}
+    checkGpsPermission();
     setFollow(true);
     if(state.gpsPoint&&!state.nav.active&&!state.nav.waiting&&!state.nav.building)
       state.map.setView(state.gpsPoint,Math.max(12,state.map.getZoom()));
@@ -827,7 +959,7 @@
       state.nav.lastWatchStartedAt=Date.now();
       try{
         state.gpsWatch=navigator.geolocation.watchPosition(
-          pos=>{if(generation===state.gpsWatchGeneration)updateGPS(pos);},
+          pos=>{if(generation===state.gpsWatchGeneration)updateGPS(pos,'monitoramento');},
           error=>gpsError(error,generation),
           {enableHighAccuracy:true,timeout:18000,maximumAge:12000}
         );
@@ -883,11 +1015,9 @@
     $('tripPanelToggleBtn').onclick=()=>setTripPanelCompact(!$('tripDashboard').classList.contains('compact'));
     $('navigationVoiceBtn').onclick=()=>{state.nav.muted=!state.nav.muted;setVoiceButton();if(state.nav.muted)try{speechSynthesis.cancel();}catch(_){}};
     document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState!=='visible'||(!state.nav.active&&!state.nav.waiting))return;
-      keepAwake();
-      if(state.gpsWatch===null|| (state.nav.lastFixAt && Date.now()-state.nav.lastFixAt>GPS_STALL_MS)){
-        releaseGpsWatch();enableGPS(false);
-      }
+      if(document.visibilityState!=='visible')return;
+      if(state.nav.active||state.nav.waiting)keepAwake();
+      gpsHealthTick();
       if(state.nav.waiting){
         const cached=recentNavigationGPS();
         if(cached)beginNavigation(cached.point,cached.position);
@@ -914,26 +1044,12 @@
     restore();restoreNavigationViewPreference();initMap();renderStops();setVoiceButton();setRecordingButton(false);$('originInput').value=state.origin.label;$('destinationInput').value=state.destination.label;
     initEvents();updateRadar();setInterval(updateRadar,600000);setInterval(refreshRadarBadge,60000);
     setInterval(()=>{
-      const nav=state.nav;
-      if(nav.waiting && !nav.gpsRequestPending && !nav.gpsPermissionDenied &&
-         Date.now()-nav.lastGpsAttemptAt>=GPS_RETRY_INTERVAL_MS){
+      gpsHealthTick();
+      if(state.nav.waiting && !state.nav.gpsRequestPending && !state.nav.gpsPermissionDenied){
         const cached=recentNavigationGPS();
         if(cached)beginNavigation(cached.point,cached.position);
-        else requestFreshNavigationGPS();
       }
-      if((nav.waiting||nav.active||state.origin.gps)&&!nav.gpsPermissionDenied){
-        const stalled=nav.lastFixAt && Date.now()-nav.lastFixAt>GPS_STALL_MS;
-        const retryReady=Date.now()-nav.lastWatchStartedAt>=GPS_WATCH_RETRY_MS;
-        if(retryReady&&(state.gpsWatch===null||stalled)){
-          releaseGpsWatch();enableGPS(false);
-        }
-      }
-      if(nav.active && nav.lastFixAt && Date.now()-nav.lastFixAt>25000){
-        $('navigationGpsState').textContent='Sinal GPS perdido • recuperando localização';
-        $('tripSpeed').textContent='—';$('tripArrival').textContent='—';
-      }
-      if(!$('settingsPanel').hidden)updateGpsDiagnostics();
-    },8000);
+    },5000);
     const queryTour=new URLSearchParams(location.search).get('roteiro');
     const hashTour=new URLSearchParams(location.hash.replace(/^#/, '')).get('roteiro');
     if(queryTour==='brasilia'||hashTour==='brasilia')loadBrasiliaTour();
