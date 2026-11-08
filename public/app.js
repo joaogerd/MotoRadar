@@ -451,10 +451,12 @@
     }
     nav.gpsRequestPending=true;nav.lastGpsAttemptAt=Date.now();nav.gpsOneShotAttempts++;
     const serial=++nav.gpsRequestSerial;
+    let completed=false;
     if(nav.waiting)navigationStatus('Localizando sua posição…');
     if(nav.waiting)$('navigationGpsState').textContent='Consultando GPS do navegador';
     const complete=(position,error)=>{
-      if(serial!==nav.gpsRequestSerial)return;
+      if(serial!==nav.gpsRequestSerial||completed)return;
+      completed=true;
       if(nav.gpsRequestTimer!==null)clearTimeout(nav.gpsRequestTimer);
       nav.gpsRequestTimer=null;nav.gpsRequestPending=false;
       if(position){
