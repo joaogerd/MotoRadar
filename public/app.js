@@ -42,7 +42,7 @@
     radarVisible:true, coverage:false, opacity:.68, animation:null,
     gpsPoint:null, gpsWatch:null, gpsWatchGeneration:0, gpsMarker:null, accuracyCircle:null, follow:false,
     pins:[], routeLayer:null, routeData:null, routeRequest:0, lastRoutePoint:null, routingLastAt:0,
-    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,lastWatchStartedAt:0,lastGpsError:'',lastGpsErrorAt:0,lastRouteError:'',gpsRequestTimer:null,gpsOneShotAttempts:0,gpsOneShotErrors:0,gpsWatchRestarts:0,gpsWatchFixes:0,lastFixSource:'nenhum',lastGpsTimestamp:0,browserPermission:'desconhecida',invalidFixes:0,needsPreciseReanchor:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
+    nav:{active:false,waiting:false,building:false,gpsRequestPending:false,gpsRequestSerial:0,lastGpsAttemptAt:0,gpsPermissionDenied:false,lastWatchStartedAt:0,lastGpsError:'',lastGpsErrorAt:0,lastRouteError:'',gpsRequestTimer:null,gpsOneShotAttempts:0,gpsOneShotErrors:0,gpsWatchRestarts:0,gpsWatchFixes:0,lastFixSource:'nenhum',lastGpsTimestamp:0,browserPermission:'desconhecida',invalidFixes:0,lastRenderError:'',lastNavigationError:'',needsPreciseReanchor:false,fullscreenOwned:false,goals:[],session:null,requestId:0,muted:false,lastFixAt:0,lowAccuracy:false,wakeLock:null,ownsGpsWatch:false,previewRoute:null,latestPosition:null,cameraPrevious:null,cameraHeading:null,cameraFrames:0},
     pickTarget:null, waitingSearch:false, lastSearch:0, searchVersion:0, mapReady:false
   };
   let toastTimeout;
@@ -705,7 +705,7 @@
     }catch(_){el.textContent='Comparação indisponível; confira acesso CORS ao radar.';}
     finally{$('radarMotionBtn').disabled=false;}
   }
-  function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); updateGpsDiagnostics(); }
+  function openSettings(){ $('settingsPanel').hidden=false; stopRadarAnimation(); checkGpsPermission(); updateGpsDiagnostics(); }
   function closeSettings(){ $('settingsPanel').hidden=true; }
   function frameTime(epoch){return new Date(epoch*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
   function ageMinutes(epoch){return Math.max(0,Math.round(Date.now()/60000-epoch/60));}
@@ -871,6 +871,8 @@
       `Consultas avulsas: ${nav.gpsOneShotAttempts} • falhas: ${nav.gpsOneShotErrors}`,
       `Estado de aquisição: ${ageMessage||'monitoramento iniciado'}`,
       `Erro GPS: ${error} • permissão negada: ${nav.gpsPermissionDenied?'sim':'não'}`,
+      `Leituras inválidas/antigas: ${nav.invalidFixes} • falha do mapa: ${nav.lastRenderError||'nenhuma'}`,
+      `Falha na navegação: ${nav.lastNavigationError||'nenhuma'}`,
       `Erro de roteamento: ${routing}`,
       `Mensagem: ${$('navigationInstruction')?.textContent||'nenhuma'}`
     ].join('\n');
@@ -898,12 +900,20 @@
     if(source==='monitoramento')state.nav.gpsWatchFixes++;
     if(state.nav.gpsRequestPending)cancelPendingGpsProbe();
     state.nav.gpsPermissionDenied=false;
-    if(historyRecorder?.isRecording()) historyRecorder.addFix({lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy,speed:pos.coords.speed,altitude:pos.coords.altitude},pos.timestamp||Date.now());
-    const p=L.latLng(pos.coords.latitude,pos.coords.longitude);state.gpsPoint=p;
-    const rawAccuracy=Number(pos.coords.accuracy);
+    const p=L.latLng(coords.latitude,coords.longitude);
+    const rawAccuracy=Number(coords.accuracy);
     const accuracy=Number.isFinite(rawAccuracy)&&rawAccuracy>=0?Math.round(rawAccuracy):9999;
-    // Somente o marcador/câmera são alinhados visualmente à rota. A posição original
-    // segue para cálculo de desvio e registro GPS, evitando mascarar mudanças reais.
+    // Registrar o fix ANTES de desenhar marcador/rota: uma exceção visual
+    // nunca pode transformar um callback real em "sem leitura" no diagnóstico.
+    state.gpsPoint=p;
+    state.nav.lastFixAt=Date.now();
+    state.nav.lastAccuracy=accuracy;
+    state.nav.latestPosition=pos;
+    try{
+      if(historyRecorder?.isRecording())historyRecorder.addFix({lat:coords.latitude,lng:coords.longitude,
+        accuracy:coords.accuracy,speed:coords.speed,altitude:coords.altitude},pos.timestamp||Date.now());
+    }catch(error){console.warn('Histórico GPS indisponível',error);}
+    try{
     const snap=state.nav.active && state.routeData?.geometry?.coordinates && window.MotoNavigation?.snapForDisplay
       ? MotoNavigation.snapForDisplay(p,state.routeData.geometry.coordinates,{accuracy,heading:pos.coords.heading,speed:pos.coords.speed})
       : {point:p,matched:false};
@@ -917,9 +927,19 @@
     if(state.origin.gps){state.origin.point=p;state.origin.label='Sua localização atual';$('originInput').value=state.origin.label;$('gpsUseBtn').classList.add('selected');
       if(!state.nav.active&&!state.nav.waiting&&state.routeLayer&&(!state.lastRoutePoint||p.distanceTo(state.lastRoutePoint)>3000)){state.lastRoutePoint=p;removeRouteLayers();drawRoute();}
     }
-    state.nav.lastFixAt=Date.now();state.nav.lastAccuracy=accuracy;state.nav.latestPosition=pos;
-    renderPins();$('gpsFloatingBtn').classList.add('active');handleNavPosition(p,pos);
+    renderPins();$('gpsFloatingBtn').classList.add('active');
+      state.nav.lastRenderError='';
+    }catch(error){
+      state.nav.lastRenderError=String(error?.message||error).slice(0,120);
+      console.warn('Erro visual após GPS recebido',error);
+    }
+    try{handleNavPosition(p,pos);state.nav.lastNavigationError='';}
+    catch(error){
+      state.nav.lastNavigationError=String(error?.message||error).slice(0,120);
+      console.warn('Erro no cálculo de navegação após GPS recebido',error);
+    }
     if(weatherMonitor.optedIn && state.nav.active)analyzeRadarAhead(true);
+    if(!$('settingsPanel').hidden)updateGpsDiagnostics();
   }
   function enableGPS(useAsOrigin=false){
     if(useAsOrigin){
