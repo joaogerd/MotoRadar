@@ -38,7 +38,9 @@ console.log(JSON.stringify(result));
 def test_gps_acquisition_retries_and_explains_permission_error():
     text=(ROOT/'app.js').read_text()
     assert 'GPS_RETRY_INTERVAL_MS' in text
-    assert 'if(nav.waiting && !nav.gpsRequestPending && !nav.gpsPermissionDenied' in text
+    assert 'function gpsHealthTick(' in text
+    assert 'function gpsWatchStalled(' in text
+    assert 'const reference=Math.max(nav.lastWatchStartedAt,nav.lastFixAt||0)' in text
     assert 'Sem leitura recente do GPS. Tentando novamente' in text
     assert 'GPS bloqueado. Autorize a localização' in text
     assert 'nav.gpsPermissionDenied=false;' in text
