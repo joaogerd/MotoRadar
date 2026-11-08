@@ -1,4 +1,4 @@
-import os, http.server, socketserver, threading
+import os, http.server, socketserver, threading, re
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -43,7 +43,9 @@ def test_multi_stop_without_gps_and_settings():
                         route.continue_()
                     context.route('**/*',intercept)
                     page=context.new_page()
-                    html=(ROOT/'index.html').read_text().replace('<link rel="stylesheet" href="app.css?v=8">','<style>'+ (ROOT/'app.css').read_text()+'</style>').replace('<script defer src="navigation.js?v=8"></script>','<script>'+(ROOT/'navigation.js').read_text()+'</script>').replace('<script defer src="app.js?v=8"></script>','<script>'+ (ROOT/'app.js').read_text()+'</script>')
+                    html=(ROOT/'index.html').read_text()
+                    html=re.sub(r'<link rel="stylesheet" href="app\.css\?v=\d+">',lambda _: '<style>'+(ROOT/'app.css').read_text()+'</style>',html)
+                    html=re.sub(r'<script defer src="([a-z-]+\.js)\?v=\d+"></script>',lambda m:'<script>'+(ROOT/m.group(1)).read_text()+'</script>',html)
                     page.set_content(html,wait_until='load')
                     # Build complete route using manual origin, stop, and destination without GPS.
                     def choose(field,name):

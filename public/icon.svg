@@ -1,1 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="116" fill="#122437"/><path d="M100 280a163 163 0 0 1 312 34" fill="none" stroke="#74decb" stroke-width="35" stroke-linecap="round"/><path d="M95 392h323M162 439h191" stroke="#e7f5fc" stroke-width="31" stroke-linecap="round"/><path d="m300 133-114 152h94l-57 117" fill="none" stroke="#f9d782" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">MotoRadar - road navigation and weather</title>
+  <defs><linearGradient id="b" x1="0" y1="0" x2=".85" y2="1"><stop stop-color="#1686ff"/><stop offset=".55" stop-color="#075bd4"/><stop offset="1" stop-color="#092c85"/></linearGradient></defs>
+  <rect width="512" height="512" rx="112" fill="url(#b)"/>
+  <path d="M105 414C194 275 302 233 434 274" fill="none" stroke="#fff" stroke-width="41" stroke-linecap="round"/>
+  <path d="M161 430C243 324 327 297 414 315" fill="none" stroke="#b9d9ff" stroke-width="8" stroke-linecap="round" stroke-dasharray="31 25"/>
+  <path d="M262 63c-70 0-118 49-118 116 0 86 118 182 118 182S380 265 380 179c0-67-48-116-118-116Z" fill="#fff"/>
+  <circle cx="262" cy="179" r="46" fill="#0872e9"/>
+</svg>
