@@ -175,7 +175,7 @@ def test_browser_can_start_and_stop_navigation_with_voice_without_leaving_app(el
             if expected_one_shots:
                 page.wait_for_function('window.__oneShots>=1',timeout=12000)
                 assert page.evaluate('window.__oneShotOptions.enableHighAccuracy') is True
-                assert page.evaluate('window.__oneShotOptions.maximumAge') == 30000
+                assert page.evaluate('window.__oneShotOptions.maximumAge') == 12000
             if fail_first:
                 page.wait_for_function('document.querySelector("#navigationInstruction").textContent.includes("Tentando novamente")',timeout=12000)
                 # O botão Centralizar deve reabrir a tentativa sem exigir
